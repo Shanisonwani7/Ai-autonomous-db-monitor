@@ -1,0 +1,21 @@
+{
+  "name": "ai-autonomous-db-monitor",
+  "version": "1.0.0",
+  "description": "- Shani\r - Muskan Ansari",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Shanisonwani7/Ai-autonomous-db-monitor.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Shanisonwani7/Ai-autonomous-db-monitor/issues"
+  },
+  "homepage": "https://github.com/Shanisonwani7/Ai-autonomous-db-monitor#readme"
+}
