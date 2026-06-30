@@ -3,12 +3,14 @@ const cors = require("cors");
 require("dotenv").config();
 
 const dashboardRoutes = require("./routes/dashboard");
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
+app.use("/api/auth", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 
 app.get("/", (req, res) => {
