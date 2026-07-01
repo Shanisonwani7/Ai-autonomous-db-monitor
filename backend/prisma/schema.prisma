@@ -27,8 +27,14 @@ model Database {
   username  String
   password  String
 
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
+  status            String?   @default("Disconnected")
+  databaseSize      String?
+  activeConnections Int?      @default(0)
+  uptime            String?
+  lastCheck         DateTime?
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
 
   createdAt DateTime @default(now())
 }

@@ -17,5 +17,8 @@
   "bugs": {
     "url": "https://github.com/Shanisonwani7/Ai-autonomous-db-monitor/issues"
   },
-  "homepage": "https://github.com/Shanisonwani7/Ai-autonomous-db-monitor#readme"
+  "homepage": "https://github.com/Shanisonwani7/Ai-autonomous-db-monitor#readme",
+  "dependencies": {
+    "pg": "^8.22.0"
+  }
 }
