@@ -4,6 +4,7 @@ require("dotenv").config();
 
 const dashboardRoutes = require("./routes/dashboard");
 const authRoutes = require("./routes/authRoutes");
+const databaseRoutes = require("./routes/databaseRoutes");
 
 const app = express();
 
@@ -12,7 +13,7 @@ app.use(express.json());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-
+app.use("/api/database", databaseRoutes);
 app.get("/", (req, res) => {
   res.json({
     message: "AI Autonomous Database Monitoring Backend Running 🚀",
