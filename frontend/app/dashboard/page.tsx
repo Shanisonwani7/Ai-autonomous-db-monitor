@@ -299,7 +299,7 @@ export default function Dashboard() {
               <p className="text-gray-500 text-sm">
                 © 2026 AI Autonomous Database Monitoring Platform
               </p>
-sorry
+
               <p className="text-gray-500 text-sm">
                 Built with Next.js • Tailwind CSS • Spring Boot • PostgreSQL
               </p>
