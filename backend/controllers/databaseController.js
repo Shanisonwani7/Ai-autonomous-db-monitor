@@ -157,6 +157,10 @@ exports.testConnection = async (req, res) => {
 
     await client.connect();
 
+    // PostgreSQL Version
+const versionResult = await client.query(`
+  SELECT version();
+`);
     // Database Size
     const sizeResult = await client.query(`
       SELECT pg_size_pretty(pg_database_size('${database.name}')) AS size;
@@ -180,9 +184,12 @@ exports.testConnection = async (req, res) => {
       where: { id },
       data: {
         status: "Connected",
+        databaseVersion: versionResult.rows[0].version,
         databaseSize: sizeResult.rows[0].size,
         activeConnections: Number(connectionResult.rows[0].connections),
         uptime: uptimeResult.rows[0].uptime.toString(),
+        databaseVersion: versionResult.rows[0].version,
+        healthScore: 100,
         lastCheck: new Date(),
       },
     });
@@ -193,6 +200,7 @@ exports.testConnection = async (req, res) => {
       databaseSize: sizeResult.rows[0].size,
       activeConnections: connectionResult.rows[0].connections,
       uptime: uptimeResult.rows[0].uptime,
+      healthScore: 100,
     });
 
   } catch (err) {

@@ -33,6 +33,10 @@ model Database {
   uptime            String?
   lastCheck         DateTime?
 
+  // NEW FIELDS
+  databaseVersion   String?
+  healthScore       Int?      @default(0)
+
   userId Int
   user   User @relation(fields: [userId], references: [id])
 
