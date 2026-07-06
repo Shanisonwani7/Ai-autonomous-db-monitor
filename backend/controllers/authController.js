@@ -33,11 +33,14 @@ exports.register = async (req, res) => {
       user: userWithoutPassword,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({
-      message: "Server Error",
-    });
-  }
+  console.error("LOGIN ERROR:", err);
+
+  res.status(500).json({
+    message: "Server Error",
+    error: err.message,
+    stack: err.stack,
+  });
+}
 };
 
 exports.login = async (req, res) => {
