@@ -203,7 +203,7 @@ export default function Dashboard() {
 
               <p className="text-xs uppercase tracking-widest text-gray-400">
 
-                Current Date
+               Date
 
               </p>
 
