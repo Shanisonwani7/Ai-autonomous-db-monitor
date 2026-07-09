@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
+import { askAI } from "@/services/aiService";
 
 interface Message {
   sender: "user" | "ai";
@@ -15,7 +16,7 @@ export default function AIChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
 
-  // Load initial AI message after component mounts
+  // Load initial AI message
   useEffect(() => {
     const currentTime = new Intl.DateTimeFormat("en-US", {
       hour: "2-digit",
@@ -33,7 +34,7 @@ export default function AIChat() {
   }, []);
 
   // Send Message
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const currentTime = new Intl.DateTimeFormat("en-US", {
@@ -44,6 +45,7 @@ export default function AIChat() {
 
     const userMessage = input;
 
+    // Show user message immediately
     setMessages((prev) => [
       ...prev,
       {
@@ -51,14 +53,51 @@ export default function AIChat() {
         text: userMessage,
         time: currentTime,
       },
-      {
-        sender: "ai",
-        text: "🤖 This is a demo response. Real AI will be connected in the next session.",
-        time: currentTime,
-      },
     ]);
 
+    // Clear input
     setInput("");
+
+    try {
+      // Temporary Database ID
+      const databaseId = 2;
+
+      // Get AI Response
+      const answer = await askAI(userMessage, databaseId);
+
+      const aiTime = new Intl.DateTimeFormat("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      }).format(new Date());
+
+      // Show AI response
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "ai",
+          text: answer,
+          time: aiTime,
+        },
+      ]);
+    } catch (error) {
+      console.error(error);
+
+      const aiTime = new Intl.DateTimeFormat("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      }).format(new Date());
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "ai",
+          text: "Failed to connect with AI service.",
+          time: aiTime,
+        },
+      ]);
+    }
   };
 
   return (

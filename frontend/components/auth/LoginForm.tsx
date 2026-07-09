@@ -55,8 +55,12 @@ export default function LoginForm() {
     // Login API
     const data = await login(email, password);
 
+    console.log("LOGIN RESPONSE:", data);
+
     // Save JWT Token
     localStorage.setItem("token", data.token);
+
+    console.log("TOKEN AFTER SAVE:", localStorage.getItem("token"));
 
     // Redirect Dashboard
     router.push("/dashboard");
