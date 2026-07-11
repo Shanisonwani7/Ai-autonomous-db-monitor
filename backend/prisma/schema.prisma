@@ -19,13 +19,19 @@ model User {
 }
 
 model Database {
-  id        Int      @id @default(autoincrement())
-  name      String
-  dbType    String
-  host      String
-  port      Int
-  username  String
-  password  String
+  id            Int      @id @default(autoincrement())
+
+  // Display Name (UI me dikhane ke liye)
+  name          String
+
+  // Actual PostgreSQL Database Name
+  databaseName String?
+
+  dbType        String
+  host          String
+  port          Int
+  username      String
+  password      String
 
   status            String?   @default("Disconnected")
   databaseSize      String?
@@ -33,7 +39,6 @@ model Database {
   uptime            String?
   lastCheck         DateTime?
 
-  // NEW FIELDS
   databaseVersion   String?
   healthScore       Int?      @default(0)
 
