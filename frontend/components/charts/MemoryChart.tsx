@@ -10,16 +10,30 @@ import {
   CartesianGrid,
 } from "recharts";
 
-// Sample memory usage data
-const data = [
-  { time: "10 AM", memory: 35 },
-  { time: "11 AM", memory: 42 },
-  { time: "12 PM", memory: 48 },
-  { time: "1 PM", memory: 45 },
-  { time: "2 PM", memory: 50 },
-];
+interface MemoryChartProps {
+  data: {
+    activeConnections: number;
+    cacheHitRatio: number;
+  } | null;
+}
 
-export default function MemoryChart() {
+export default function MemoryChart({ data }: MemoryChartProps) {
+  if (!data) {
+    return (
+      <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-lg hover:border-cyan-500/40 transition-all duration-300 h-[400px] flex items-center justify-center">
+        <p className="text-gray-400 animate-pulse font-medium">Loading Memory chart...</p>
+      </div>
+    );
+  }
+
+  const chartData = [
+    { time: "Now", memory: data.cacheHitRatio },
+    { time: "+1m", memory: Math.max(data.cacheHitRatio - 2, 0) },
+    { time: "+2m", memory: Math.min(data.cacheHitRatio + 1, 100) },
+    { time: "+3m", memory: data.cacheHitRatio },
+    { time: "+4m", memory: Math.min(data.cacheHitRatio + 2, 100) },
+  ];
+
   return (
     <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-lg hover:border-cyan-500/40 transition-all duration-300">
 
@@ -54,7 +68,7 @@ export default function MemoryChart() {
       {/* Area Chart */}
       <ResponsiveContainer width="100%" height={300}>
 
-        <AreaChart data={data}>
+        <AreaChart data={chartData}>
 
           <CartesianGrid
             strokeDasharray="4 4"

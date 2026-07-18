@@ -1,161 +1,103 @@
 "use client";
 
-import { Brain, CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
+import { Sparkles, ArrowUpRight } from "lucide-react";
 
-// AI Recommendation Panel
-export default function AIRecommendation() {
+interface AIRecommendationProps {
+  data: {
+    healthScore: number;
+    cacheHitRatio: number;
+    deadlocks: number;
+    activeConnections: number;
+  } | null;
+}
+
+export default function AIRecommendation({ data }: AIRecommendationProps) {
+  if (!data) {
+    return (
+      <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 h-full min-h-[300px] flex items-center justify-center hover:border-cyan-500/30 transition">
+        <p className="text-gray-400 animate-pulse font-medium">Loading AI recommendations...</p>
+      </div>
+    );
+  }
+
+  // AI Confidence Logic
+  let aiConfidence = "82%";
+  if (data.healthScore >= 90) {
+    aiConfidence = "96%";
+  } else if (data.healthScore >= 80) {
+    aiConfidence = "90%";
+  }
+
+  // AI Suggestion Logic
+  let suggestion = "Database is running efficiently. Continue monitoring.";
+  let estimatedGain = "+5%";
+
+  if (data.cacheHitRatio < 90) {
+    suggestion = "Increase shared_buffers for better performance.";
+    estimatedGain = "+20%";
+  } else if (data.deadlocks > 0) {
+    suggestion = "Optimize transactions and add indexes.";
+    estimatedGain = "+30%";
+  }
+
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg hover:border-cyan-500/40 transition-all duration-300">
-
-      {/* Header */}
+    <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 hover:border-cyan-500/30 transition h-full flex flex-col">
       <div className="flex items-center justify-between mb-6">
-
-        <div className="flex items-center gap-3">
-
-          <div className="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center">
-            <Brain className="w-6 h-6 text-cyan-400" />
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-purple-500/10 rounded-xl text-purple-400">
+            <Sparkles className="w-6 h-6" />
           </div>
-
           <div>
-
-            <h2 className="text-2xl font-bold text-white">
-              AI Recommendation
-            </h2>
-
-            <p className="text-sm text-gray-400">
-              Intelligent optimization suggestions
-            </p>
-
+            <h3 className="text-xl font-bold text-white">AI Analysis</h3>
+            <p className="text-sm text-gray-400 mt-1">Real-time optimization insights</p>
           </div>
-
         </div>
-
-        <div className="px-3 py-1 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-sm font-medium">
-          AI Active
+        
+        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium border bg-purple-500/10 text-purple-400 border-purple-500/20">
+          Confidence: {aiConfidence}
         </div>
-
       </div>
 
-      {/* AI Confidence */}
-      <div className="bg-slate-900 rounded-xl p-4 border border-slate-700 mb-5">
-
-        <div className="flex items-center justify-between">
-
-          <span className="text-gray-400">
-            AI Confidence
-          </span>
-
-          <span className="text-cyan-400 font-bold">
-            96%
-          </span>
-
-        </div>
-
-        <div className="mt-3 h-2 bg-slate-700 rounded-full overflow-hidden">
-
-          <div
-            className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full"
-            style={{ width: "96%" }}
-          />
-
-        </div>
-
-      </div>
-
-      {/* Recommendation List */}
-      <div className="space-y-4">
-
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-700 hover:border-green-500/40 transition">
-
-          <div className="flex items-center gap-3">
-
-            <CheckCircle2 className="text-green-400 w-5 h-5" />
-
-            <p className="text-green-400 font-semibold">
-              CPU Usage is Normal
-            </p>
-
-          </div>
-
-        </div>
-
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-700 hover:border-cyan-500/40 transition">
-
-          <div className="flex items-center gap-3">
-
-            <CheckCircle2 className="text-cyan-400 w-5 h-5" />
-
-            <p className="text-cyan-400 font-semibold">
-              Memory Usage Stable
-            </p>
-
-          </div>
-
-        </div>
-
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-700 hover:border-yellow-500/40 transition">
-
-          <div className="flex items-center justify-between">
-
-            <div className="flex items-center gap-3">
-
-              <AlertTriangle className="text-yellow-400 w-5 h-5" />
-
-              <p className="text-yellow-400 font-semibold">
-                Slow Query Detected
-              </p>
-
-            </div>
-
-            <span className="text-xs bg-yellow-500/10 text-yellow-400 px-2 py-1 rounded-full">
-              Medium
-            </span>
-
-          </div>
-
-          <p className="text-gray-400 mt-3">
-            Query execution time is higher than expected.
+      <div className="space-y-4 mb-8 flex-1">
+        <div className="flex items-start gap-3">
+          <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-2 shrink-0"></div>
+          <p className="text-gray-300">
+            {data.healthScore >= 90 ? "✅ Database health is excellent." : "⚠ Database health needs improvement."}
           </p>
-
         </div>
 
+        {data.cacheHitRatio < 90 && (
+          <div className="flex items-start gap-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-2 shrink-0"></div>
+            <p className="text-gray-300">Increase cache/shared_buffers to improve cache hit ratio.</p>
+          </div>
+        )}
+
+        {data.deadlocks > 0 && (
+          <div className="flex items-start gap-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-2 shrink-0"></div>
+            <p className="text-gray-300">Deadlocks detected. Investigate long-running transactions.</p>
+          </div>
+        )}
+
+        {data.activeConnections > 80 && (
+          <div className="flex items-start gap-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-2 shrink-0"></div>
+            <p className="text-gray-300">High active connections detected. Consider connection pooling.</p>
+          </div>
+        )}
       </div>
 
-      {/* AI Suggestion */}
-      <div className="mt-6 bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-5">
-
-        <div className="flex items-center gap-3 mb-3">
-
-          <Sparkles className="text-cyan-400 w-5 h-5" />
-
-          <h3 className="text-cyan-400 font-bold">
-            AI Suggestion
-          </h3>
-
+      <div className="bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border border-purple-500/20 rounded-xl p-5">
+        <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">Suggestion</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <p className="text-white font-medium">{suggestion}</p>
+          <div className="flex items-center gap-1 text-green-400 bg-green-400/10 px-3 py-1 rounded-full whitespace-nowrap self-start sm:self-auto">
+            <ArrowUpRight className="w-4 h-4" />
+            <span className="font-bold text-sm">Estimated Gain: {estimatedGain}</span>
+          </div>
         </div>
-
-        <p className="text-gray-300 leading-7">
-          Create an index on
-          <span className="text-cyan-400 font-semibold">
-            {" "}users.email
-          </span>
-          {" "}to improve query performance.
-        </p>
-
-        <div className="flex items-center justify-between mt-5">
-
-          <span className="text-green-400 font-semibold">
-            Estimated Gain: +35%
-          </span>
-
-          <button className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white text-sm transition">
-            Apply Suggestion
-          </button>
-
-        </div>
-
       </div>
-
     </div>
   );
 }

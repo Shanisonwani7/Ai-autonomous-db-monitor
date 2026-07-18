@@ -88,7 +88,7 @@ async function connectClient(database) {
     port: database.port,
     user: database.username,
     password,
-    database: "postgres",
+    database: getActualDatabaseName(database),
     connectionTimeoutMillis: CONNECT_TIMEOUT_MS,
     statement_timeout: STATEMENT_TIMEOUT_MS,
     query_timeout: STATEMENT_TIMEOUT_MS,
@@ -167,6 +167,28 @@ async function refreshConnectionStatus(database) {
       "SELECT now() - pg_postmaster_start_time() AS uptime;"
     );
 
+    // ----- Session 8: pg_stat_database monitoring metrics -----
+    const statsResult = await client.query(
+      `SELECT xact_commit, xact_rollback, blks_read, blks_hit, deadlocks
+       FROM pg_stat_database
+       WHERE datname = $1;`,
+      [dbName]
+    );
+
+    const statsRow = statsResult.rows[0] || {};
+    const commits = Number(statsRow.xact_commit || 0);
+    const rollbacks = Number(statsRow.xact_rollback || 0);
+    const blocksRead = Number(statsRow.blks_read || 0);
+    const blocksHit = Number(statsRow.blks_hit || 0);
+    const deadlocks = Number(statsRow.deadlocks || 0);
+
+    const totalBlockAccesses = blocksHit + blocksRead;
+    const cacheHitRatio =
+      totalBlockAccesses > 0
+        ? Number(((blocksHit / totalBlockAccesses) * 100).toFixed(2))
+        : 0;
+    // ------------------------------------------------------------
+
     const version = versionResult.rows[0].version;
     const databaseSize = sizeResult.rows[0].size;
     const activeConnections = Number(connectionResult.rows[0].total);
@@ -202,6 +224,12 @@ async function refreshConnectionStatus(database) {
         activeConnections,
         uptime,
         healthScore,
+        // ----- Session 8: additional monitoring metrics -----
+        commits,
+        rollbacks,
+        deadlocks,
+        cacheHitRatio,
+        // ------------------------------------------------------
       },
     };
   } catch (err) {
@@ -308,6 +336,12 @@ async function getDashboardMetrics(id, userId) {
       uptime: metrics.uptime,
       healthScore: metrics.healthScore,
       lastCheck: result.database.lastCheck,
+      // ----- Session 8: additional monitoring metrics -----
+      commits: metrics.commits,
+      rollbacks: metrics.rollbacks,
+      deadlocks: metrics.deadlocks,
+      cacheHitRatio: metrics.cacheHitRatio,
+      // ------------------------------------------------------
     },
   });
 }

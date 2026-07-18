@@ -8,25 +8,40 @@ import {
   Tooltip,
 } from "recharts";
 
-// Sample database health data
-const data = [
-  {
-    name: "Healthy",
-    value: 95,
-  },
-  {
-    name: "Issue",
-    value: 5,
-  },
-];
-
 // Chart colors
 const COLORS = [
   "#22c55e",
   "#ef4444",
 ];
 
-export default function DatabaseHealthChart() {
+interface DatabaseHealthChartProps {
+  data: {
+    healthScore: number;
+  } | null;
+}
+
+export default function DatabaseHealthChart({ data }: DatabaseHealthChartProps) {
+  if (!data) {
+    return (
+      <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-lg hover:border-cyan-500/40 transition-all duration-300 h-[400px] flex items-center justify-center">
+        <p className="text-gray-400 animate-pulse font-medium">Loading Database Health...</p>
+      </div>
+    );
+  }
+
+  const chartData = [
+    {
+      name: "Healthy",
+      value: data.healthScore,
+    },
+    {
+      name: "Issue",
+      value: 100 - data.healthScore,
+    },
+  ];
+
+  const isHealthy = data.healthScore >= 80;
+
   return (
     <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-lg hover:border-cyan-500/40 transition-all duration-300">
 
@@ -48,10 +63,10 @@ export default function DatabaseHealthChart() {
         {/* Health Badge */}
         <div className="flex items-center gap-2">
 
-          <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+          <span className={`w-2.5 h-2.5 rounded-full ${isHealthy ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
 
-          <span className="text-xs font-medium text-green-400">
-            HEALTHY
+          <span className={`text-xs font-medium ${isHealthy ? 'text-green-400' : 'text-red-400'}`}>
+            {isHealthy ? 'HEALTHY' : 'WARNING'}
           </span>
 
         </div>
@@ -64,14 +79,14 @@ export default function DatabaseHealthChart() {
         <PieChart>
 
           <Pie
-            data={data}
+            data={chartData}
             dataKey="value"
             innerRadius={70}
             outerRadius={100}
             paddingAngle={4}
           >
 
-            {data.map((entry, index) => (
+            {chartData.map((entry, index) => (
 
               <Cell
                 key={entry.name}
@@ -98,7 +113,7 @@ export default function DatabaseHealthChart() {
             textAnchor="middle"
             className="fill-white text-3xl font-bold"
           >
-            95%
+            {data.healthScore}%
           </text>
 
           <text
@@ -107,7 +122,7 @@ export default function DatabaseHealthChart() {
             textAnchor="middle"
             className="fill-slate-400 text-sm"
           >
-            Healthy
+            {isHealthy ? "Healthy" : "Needs Attention"}
           </text>
 
         </PieChart>
