@@ -6,7 +6,7 @@ import Navbar from "../../components/layout/Navbar";
 import CpuChart from "../../components/charts/CpuChart";
 import MemoryChart from "../../components/charts/MemoryChart";
 import DatabaseHealthChart from "../../components/charts/DatabaseHealthChart";
-
+import QueryOptimizer from "../../components/Ai/QueryOptimizer";
 import AIRecommendation from "../../components/Ai/AIRecommendation";
 import RecentAlerts from "../../components/alerts/RecentAlerts";
 import DatabaseStatus from "../../components/database/DatabaseStatus";
@@ -255,7 +255,14 @@ export default function Dashboard() {
             />
             <AIRecommendation data={data} />
           </div>
-
+          {/* AI Query Optimizer */}
+          <div className="mt-12">
+            <SectionHeader
+              title="AI Query Optimizer"
+              subtitle="Analyze SQL queries and receive AI-powered optimization suggestions"
+            />
+            <QueryOptimizer />
+          </div>
           {/* Bottom Section */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-12">
             <RecentAlerts data={data} />
