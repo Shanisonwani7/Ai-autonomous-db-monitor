@@ -58,7 +58,21 @@ ${question}
         }
       );
 
-      return response.data.choices[0].message.content;
+      const content = response.data.choices[0].message.content;
+
+try {
+  return JSON.parse(content);
+} catch (err) {
+  return {
+    optimizationScore: 80,
+    estimatedImprovement: "0%",
+    executionTime: "Unknown",
+    optimizedExecutionTime: "Unknown",
+    optimizedQuery: "",
+    recommendations: [],
+    analysis: content,
+  };
+}
     } catch (error) {
         console.log("========== OPENROUTER ERROR ==========");
         console.log("Status:", error.response?.status);

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useMonitoring } from "../../hooks/useMonitoring";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/layout/Navbar";
@@ -99,9 +100,7 @@ export default function Dashboard() {
     typeof window !== "undefined"
       ? localStorage.getItem("token") || ""
       : "";
-
-  const databaseId = 12;
-
+  const databaseId =12;
   const { data, loading, error } = useMonitoring(databaseId, token);
 
   if (loading) {
@@ -264,10 +263,34 @@ export default function Dashboard() {
             <QueryOptimizer />
           </div>
           {/* Bottom Section */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-12">
-            <RecentAlerts data={data} />
-            <DatabaseStatus data={data} />
-          </div>
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-12">
+
+  {/* Recent Alerts */}
+  <div>
+    <div className="flex items-center justify-between mb-4">
+      <h2 className="text-2xl font-bold text-white">
+        Recent Alerts
+      </h2>
+
+      <Link
+        href="/alerts"
+        className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors"
+      >
+        View All →
+      </Link>
+    </div>
+
+    <RecentAlerts
+      data={data}
+      databaseId={databaseId}
+      token={token}
+    />
+  </div>
+
+  {/* Database Status */}
+  <DatabaseStatus data={data} />
+
+</div>
 
           {/* Footer */}
           <footer className="mt-16 border-t border-slate-800 pt-6 pb-2">

@@ -14,18 +14,43 @@ import {
   Database,
   CheckCircle2
 } from 'lucide-react';
-
+import { optimizeQuery } from "@/services/queryOptimizer";
 export default function QueryOptimizer() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [query, setQuery] = useState("");
+  const [result, setResult] = useState<any>(null);
+  const token =
+  typeof window !== "undefined"
+    ? localStorage.getItem("token") || ""
+    : "";
 
-  const handleAnalyze = () => {
+  const databaseId = 12;
+  const handleAnalyze = async () => {
+  if (!query.trim()) {
+    alert("Please enter a SQL query.");
+    return;
+  }
+
+  try {
     setIsAnalyzing(true);
-    // Simulate analysis delay
-    setTimeout(() => {
-      setIsAnalyzing(false);
-    }, 2000);
-  };
+
+    const response = await optimizeQuery(
+      databaseId,
+      query,
+      token
+    );
+
+    console.log("AI RESPONSE:", response);
+
+    setResult(response);
+
+  } catch (err: any) {
+    console.error(err);
+    alert(err.message || "Failed to analyze query.");
+  } finally {
+    setIsAnalyzing(false);
+  }
+};
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -116,10 +141,38 @@ export default function QueryOptimizer() {
             {/* Metrics Section */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { label: 'Query Score', value: '92/100', icon: Target, color: 'text-green-400' },
-                { label: 'Est. Improvement', value: '45%', icon: Activity, color: 'text-blue-400' },
-                { label: 'Execution Time', value: '120ms', icon: Timer, color: 'text-orange-400' },
-                { label: 'Optimized Time', value: '66ms', icon: Zap, color: 'text-purple-400' }
+                {
+                  label: "Query Score",
+                  value: result
+                  ? `${result.optimizationScore}/100`
+                  : "92/100",
+                  icon: Target,
+                  color: "text-green-400",
+                },
+                {
+                  label: "Est. Improvement",
+                  value: result
+                  ? result.estimatedImprovement
+                  : "45%",
+                  icon: Activity,
+                  color: "text-blue-400",
+                },
+                {
+                  label: "Execution Time",
+                  value: result
+                 ? result.executionTime
+                  : "120ms",
+                  icon: Timer,
+                  color: "text-orange-400",
+                },
+                {
+                  label: "Optimized Time",
+                  value: result
+                    ? result.optimizedExecutionTime
+                    : "66ms",
+                  icon: Zap,
+                  color: "text-purple-400",
+                }
               ].map((stat, index) => (
                 <div key={index} className="bg-[#131B2C] border border-white/5 p-4 rounded-2xl shadow-lg shadow-black/20 backdrop-blur-xl">
                   <stat.icon className={`w-6 h-6 mb-3 ${stat.color}`} />
@@ -186,11 +239,13 @@ export default function QueryOptimizer() {
               </div>
               <div className="p-4 bg-[#0D121D]">
                 <pre className="font-mono text-sm leading-relaxed overflow-x-auto text-blue-300">
-                  <code>
-<span className="text-pink-500">SELECT</span> name, email{'\n'}
-<span className="text-pink-500">FROM</span> users{'\n'}
-<span className="text-pink-500">WHERE</span> age &gt; <span className="text-purple-400">20</span>;
-                  </code>
+                 <code>
+                  {result
+                  ? result.optimizedQuery
+                  : `SELECT name, email
+                  FROM users
+                  WHERE age > 20;`}
+                 </code>
                 </pre>
               </div>
             </div>
@@ -202,12 +257,14 @@ export default function QueryOptimizer() {
                 AI Suggestions
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
+                {
+                  result?.recommendations ?? [
                   "Add an index on age column.",
                   "Avoid using SELECT *.",
                   "Filter unnecessary rows.",
                   "Use LIMIT whenever possible."
-                ].map((suggestion, idx) => (
+                ]
+                .map((suggestion, idx) => (
                   <motion.div 
                     key={idx}
                     whileHover={{ scale: 1.02, y: -2 }}
@@ -221,6 +278,19 @@ export default function QueryOptimizer() {
                     </p>
                   </motion.div>
                 ))}
+                {/* AI Analysis */}
+                <div className="bg-[#131B2C] border border-white/5 rounded-2xl p-6">
+                  <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4 flex items-center">
+                    <Sparkles className="w-4 h-4 mr-2 text-blue-400" />
+                    AI Performance Analysis
+                  </h3>
+
+                <p className="text-gray-300 leading-7 whitespace-pre-line">
+                 {result
+                 ? result.aiAnalysis
+                  : "Analyze a query to see AI insights."}
+                </p>
+                </div>
               </div>
             </div>
 

@@ -29,7 +29,9 @@ const monitoringRoutes = require("./routes/monitoringRoutes");
 const userRoutes = require("./routes/userRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const reportRoutes = require("./routes/reportRoutes");
-
+const queryOptimizerRoutes = require("./routes/queryOptimizerRoutes");
+const predictionRoutes = require("./routes/predictionRoutes");
+const alertRoutes = require("./routes/alertRoutes");
 // =======================
 // API Routes
 // =======================
@@ -40,7 +42,9 @@ app.use("/api/monitor", monitoringRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/reports", reportRoutes);
-
+app.use("/api/query-optimizer", queryOptimizerRoutes);
+app.use("/api/prediction", predictionRoutes);
+app.use("/api/alerts", alertRoutes);
 // =======================
 // Home Route
 // =======================

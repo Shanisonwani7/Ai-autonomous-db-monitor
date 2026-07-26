@@ -1,7 +1,7 @@
 "use client";
-
+import { getDatabases } from "@/services/databaseService";
 import { useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, DatabaseZap, Loader2, XCircle } from "lucide-react";
 import { getReport } from "@/services/reportService";
 import { ReportResponse } from "@/types/report";
 import DownloadButton from "@/components/reports/DownloadButton";
@@ -13,9 +13,17 @@ type HealthStatus = "healthy" | "warning" | "critical";
 function getHealthStatus(report: ReportResponse): HealthStatus {
   const { monitoring } = report.report;
 
-  const isCritical = monitoring.locks > 0 || monitoring.longTransactions > 2;
+  const locks = monitoring.locks;
+  const slowQueries = monitoring.slowQueries;
+  const longTransactions = monitoring.longTransactions;
+  // runningQueries may not exist on every report payload; default to 0 if absent.
+  const runningQueries = (monitoring as { runningQueries?: number }).runningQueries ?? 0;
+
+  const isCritical =
+    locks >= 20 || longTransactions >= 5 || runningQueries >= 50;
+
   const isWarning =
-    !isCritical && (monitoring.slowQueries > 0 || monitoring.longTransactions > 0);
+    !isCritical && (locks >= 5 || slowQueries >= 5 || longTransactions > 0);
 
   if (isCritical) return "critical";
   if (isWarning) return "warning";
@@ -62,6 +70,7 @@ function HealthBadge({ status }: { status: HealthStatus }) {
 }
 
 export default function ReportsPage() {
+  const [databaseId, setDatabaseId] = useState<number | null>(null);
   const [report, setReport] = useState<ReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -69,8 +78,22 @@ export default function ReportsPage() {
   useEffect(() => {
     async function fetchReport() {
       try {
-        // Abhi database id = 2
-        const data = await getReport(2);
+        setError("");
+        const databases = await getDatabases();
+
+        if (!databases || databases.length === 0) {
+          setDatabaseId(null);
+          setReport(null);
+          return;
+        }
+
+        const selectedDatabase =
+          databases.find((db) => db.status === "Connected") ?? databases[0];
+
+        const selectedDatabaseId = selectedDatabase.id;
+        setDatabaseId(selectedDatabaseId);
+
+        const data = await getReport(selectedDatabaseId);
 
         setReport(data);
       } catch (err) {
@@ -109,7 +132,19 @@ export default function ReportsPage() {
     );
   }
 
-  if (!report) return null;
+  if (!databaseId || !report) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+        <div className="flex max-w-md flex-col items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/40 p-10 text-center">
+          <DatabaseZap className="h-10 w-10 text-slate-500" />
+          <p className="text-lg font-semibold text-white">No database found</p>
+          <p className="text-sm text-slate-400">
+            Please add a database first.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const status = getHealthStatus(report);
 
@@ -134,7 +169,7 @@ export default function ReportsPage() {
           </div>
 
           <div className="flex shrink-0 md:justify-end">
-            <DownloadButton databaseId={2} />
+            <DownloadButton databaseId={databaseId} />
           </div>
         </div>
 

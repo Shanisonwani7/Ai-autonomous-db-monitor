@@ -14,7 +14,9 @@ module.exports = (req, res, next) => {
   }
 
   const token = authHeader.split(" ")[1];
-
+  console.log("Authorization Header:", authHeader);
+console.log("Received Token:", token);
+console.log("Token Length:", token.length);
   console.log("Received Token:", token);
 
   try {

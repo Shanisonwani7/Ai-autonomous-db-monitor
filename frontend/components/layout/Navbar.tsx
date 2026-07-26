@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import {
   Bell,
   Search,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 
 export default function Navbar() {
+  const pathname = usePathname();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -31,7 +33,17 @@ export default function Navbar() {
       {/* Left Section */}
       <div>
         <h1 className="text-2xl font-bold text-white tracking-tight">
-          Dashboard
+          {pathname === "/"
+            ? "Dashboard"
+            : pathname === "/alerts"
+            ? "Alerts Center"
+            : pathname === "/reports"
+            ? "Reports"
+            : pathname === "/database"
+            ? "Database Monitoring"
+            : pathname === "/query-optimizer"
+            ? "AI Query Optimizer"
+            : "Dashboard"}
         </h1>
         <p className="text-slate-400 text-sm mt-0.5">
           AI Autonomous Database Monitoring Platform
