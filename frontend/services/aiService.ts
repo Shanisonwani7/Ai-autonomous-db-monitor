@@ -8,7 +8,7 @@ function getToken() {
 }
 
 // Ask AI
-export async function askAI(question: string, databaseId: number) {
+export async function askAI(question: string, databaseId: number): Promise<string> {
   const token = getToken();
 
   const response = await fetch(`${API_URL}/chat`, {
@@ -29,5 +29,15 @@ export async function askAI(question: string, databaseId: number) {
     throw new Error(data.message || "Failed to get AI response");
   }
 
-  return data.answer;
+  // If backend returns JSON with analysis
+  if (data.answer?.analysis) {
+    return data.answer.analysis;
+  }
+
+  // If backend returns plain text
+  if (typeof data.answer === "string") {
+    return data.answer;
+  }
+
+  return "No response received from AI.";
 }

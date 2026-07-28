@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { useDatabase } from "@/context/DatabaseContext";
+
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import { askAI } from "@/services/aiService";
@@ -15,8 +17,10 @@ interface Message {
 export default function AIChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // Load initial AI message
+  const { selectedDatabaseId } = useDatabase();
+
   useEffect(() => {
     const currentTime = new Intl.DateTimeFormat("en-US", {
       hour: "2-digit",
@@ -33,9 +37,13 @@ export default function AIChat() {
     ]);
   }, []);
 
-  // Send Message
   const handleSend = async () => {
     if (!input.trim()) return;
+
+    if (!selectedDatabaseId) {
+      alert("Please select a database.");
+      return;
+    }
 
     const currentTime = new Intl.DateTimeFormat("en-US", {
       hour: "2-digit",
@@ -45,7 +53,6 @@ export default function AIChat() {
 
     const userMessage = input;
 
-    // Show user message immediately
     setMessages((prev) => [
       ...prev,
       {
@@ -55,15 +62,12 @@ export default function AIChat() {
       },
     ]);
 
-    // Clear input
     setInput("");
 
     try {
-      // Temporary Database ID
-      const databaseId = 2;
+      setLoading(true);
 
-      // Get AI Response
-      const answer = await askAI(userMessage, databaseId);
+      const answer = await askAI(userMessage, selectedDatabaseId);
 
       const aiTime = new Intl.DateTimeFormat("en-US", {
         hour: "2-digit",
@@ -71,7 +75,6 @@ export default function AIChat() {
         hour12: true,
       }).format(new Date());
 
-      // Show AI response
       setMessages((prev) => [
         ...prev,
         {
@@ -97,13 +100,13 @@ export default function AIChat() {
           time: aiTime,
         },
       ]);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-
-      {/* Chat Messages */}
       <div className="h-[500px] overflow-y-auto space-y-5 mb-6">
         {messages.map((message, index) => (
           <ChatMessage
@@ -115,11 +118,11 @@ export default function AIChat() {
         ))}
       </div>
 
-      {/* Chat Input */}
       <ChatInput
         input={input}
         setInput={setInput}
         handleSend={handleSend}
+        loading={loading}
       />
     </div>
   );

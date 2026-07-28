@@ -15,19 +15,28 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { optimizeQuery } from "@/services/queryOptimizer";
+import { useDatabase } from "@/context/DatabaseContext";
+
 export default function QueryOptimizer() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<any>(null);
+
+  const { selectedDatabaseId } = useDatabase();
+
   const token =
   typeof window !== "undefined"
     ? localStorage.getItem("token") || ""
     : "";
 
-  const databaseId = 12;
   const handleAnalyze = async () => {
   if (!query.trim()) {
     alert("Please enter a SQL query.");
+    return;
+  }
+
+  if (!selectedDatabaseId) {
+    alert("Please select a database.");
     return;
   }
 
@@ -35,7 +44,7 @@ export default function QueryOptimizer() {
     setIsAnalyzing(true);
 
     const response = await optimizeQuery(
-      databaseId,
+      selectedDatabaseId!,
       query,
       token
     );
