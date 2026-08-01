@@ -1,4 +1,3 @@
-
 "use client";
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -62,8 +61,9 @@ export default function LoginForm() {
 
     console.log("TOKEN AFTER SAVE:", localStorage.getItem("token"));
 
-    // Redirect Dashboard
-    router.push("/dashboard");
+    // Redirect Dashboard — full reload so DatabaseProvider
+    // initializes with the new token, not stale context.
+    window.location.href = "/dashboard";
 
     } catch (err) {
 

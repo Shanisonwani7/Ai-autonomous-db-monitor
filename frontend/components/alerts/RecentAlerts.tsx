@@ -3,23 +3,12 @@ import { useEffect, useState } from "react";
 import { getAlerts } from "@/services/alertsService";
 import { AlertTriangle } from "lucide-react";
 interface RecentAlertsProps {
-  data: {
-    name: string;
-    healthScore: number;
-    deadlocks: number;
-    activeConnections: number;
-    cacheHitRatio: number;
-    status: string;
-    lastCheck: string;
-  } | null;
-
   databaseId: number;
   token: string;
   showHeader?: boolean;
 }
 
 export default function RecentAlerts({
-  data,
   databaseId,
   token,
   showHeader = true,
@@ -28,12 +17,24 @@ export default function RecentAlerts({
 const [loadingAlerts, setLoadingAlerts] = useState(true);
 
 useEffect(() => {
+  // No database selected
+  if (!databaseId || !token) {
+    setAlerts([]);
+    setLoadingAlerts(false);
+    return;
+  }
+
   async function loadAlerts() {
     try {
+      setLoadingAlerts(true);
+
       const response = await getAlerts(databaseId, token);
+
       setAlerts(response.alerts || []);
     } catch (error) {
       console.error("Failed to fetch alerts:", error);
+
+      setAlerts([]);
     } finally {
       setLoadingAlerts(false);
     }
@@ -41,13 +42,6 @@ useEffect(() => {
 
   loadAlerts();
 }, [databaseId, token]);
-  if (!data) {
-    return (
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg hover:border-red-500/40 transition-all duration-300 h-full min-h-[300px] flex items-center justify-center">
-        <p className="text-gray-400 animate-pulse font-medium">Loading alerts...</p>
-      </div>
-    );
-  }
   if (loadingAlerts) {
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 flex items-center justify-center">

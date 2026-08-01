@@ -14,8 +14,9 @@ import { getDatabases } from "@/services/databaseService";
 interface DatabaseContextType {
   databases: Database[];
   selectedDatabaseId: number | null;
-  setSelectedDatabaseId: (id: number) => void;
+  setSelectedDatabaseId: (id: number | null) => void;
   loading: boolean;
+  refreshDatabases: () => Promise<void>;
 }
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(
@@ -32,24 +33,42 @@ export function DatabaseProvider({
     useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadDatabases() {
-      try {
-        const data = await getDatabases();
+  async function refreshDatabases() {
+    try {
+      setLoading(true);
 
-        setDatabases(data);
+      const data = await getDatabases();
+      console.log("DATABASE LIST:", data);
+      setDatabases(data);
 
-        if (data.length > 0) {
-          setSelectedDatabaseId(data[0].id);
-        }
-      } catch (error) {
-        console.error("Failed to load databases:", error);
-      } finally {
-        setLoading(false);
-      }
+    if (data.length > 0) {
+  setSelectedDatabaseId((current) => {
+    console.log("CURRENT DATABASE:", current);
+    console.log("FIRST DATABASE:", data[0]);
+
+    if (
+      current &&
+      data.some((db) => db.id === current)
+    ) {
+      return current;
     }
 
-    loadDatabases();
+    return data[0].id;
+  });
+} else {
+  setSelectedDatabaseId(null);
+}
+    } catch (error) {
+      console.error("Failed to load databases:", error);
+      setDatabases([]);
+      setSelectedDatabaseId(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refreshDatabases();
   }, []);
 
   return (
@@ -59,6 +78,7 @@ export function DatabaseProvider({
         selectedDatabaseId,
         setSelectedDatabaseId,
         loading,
+        refreshDatabases,
       }}
     >
       {children}

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { addDatabase } from "@/services/databaseService";
 import { AddDatabaseRequest } from "@/types/database";
-
+import { useDatabase } from "@/context/DatabaseContext";
 interface AddDatabaseModalProps {
   open: boolean;
   onClose: () => void;
@@ -33,7 +33,7 @@ export default function AddDatabaseModal({
   onSuccess,
 }: AddDatabaseModalProps) {
   const [form, setForm] = useState<AddDatabaseFormState>(initialForm);
-
+  const { refreshDatabases } = useDatabase();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -68,10 +68,14 @@ export default function AddDatabaseModal({
     try {
       await addDatabase(form);
 
+      await refreshDatabases();
+
       if (!isMountedRef.current) return;
 
       setForm(initialForm);
+
       onSuccess();
+
       onClose();
     } catch (err) {
       if (!isMountedRef.current) return;

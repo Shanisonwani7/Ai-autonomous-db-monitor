@@ -1,12 +1,24 @@
 "use client";
-import { getDatabases } from "@/services/databaseService";
+
 import { useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, DatabaseZap, Loader2, XCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Database,
+  DatabaseZap,
+  Loader2,
+  XCircle,
+} from "lucide-react";
+
+import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/layout/Navbar";
 import { getReport } from "@/services/reportService";
 import { ReportResponse } from "@/types/report";
 import DownloadButton from "@/components/reports/DownloadButton";
 import ReportSummary from "@/components/reports/ReportSummary";
 import ReportTable from "@/components/reports/ReportTable";
+import { useDatabase } from "@/context/DatabaseContext";
 
 type HealthStatus = "healthy" | "warning" | "critical";
 
@@ -69,116 +81,147 @@ function HealthBadge({ status }: { status: HealthStatus }) {
   );
 }
 
+// Loading spinner
+function CenteredSpinner({ label }: { label: string }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-300">
+      <div className="flex flex-col items-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-sky-400" />
+        <p className="text-sm text-slate-400">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+// No database yet
+function NoDatabaseEmptyState() {
+  const router = useRouter();
+
+  return (
+    <div className="flex items-center justify-center min-h-[70vh] px-6">
+      <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-2xl shadow-lg p-12 max-w-lg w-full text-center">
+        <div className="mx-auto mb-6 w-20 h-20 rounded-2xl bg-cyan-500/10 flex items-center justify-center">
+          <DatabaseZap className="w-10 h-10 text-cyan-400" />
+        </div>
+
+        <h2 className="text-2xl font-bold text-white mb-3">
+          No Database Connected
+        </h2>
+
+        <p className="text-gray-400 mb-8 leading-relaxed">
+          Please add your first PostgreSQL database to generate reports.
+        </p>
+
+        <button
+          onClick={() => router.push("/database")}
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold shadow-lg hover:shadow-cyan-500/30 hover:-translate-y-0.5 transition-all duration-300"
+        >
+          <Database className="w-5 h-5" />
+          Add Database
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ReportsPage() {
-  const [databaseId, setDatabaseId] = useState<number | null>(null);
+  const { selectedDatabaseId, loading: databaseLoading } = useDatabase();
+
   const [report, setReport] = useState<ReportResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [reportLoading, setReportLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Report fetch: only runs when a real selectedDatabaseId exists.
   useEffect(() => {
-    async function fetchReport() {
+    if (!selectedDatabaseId) {
+      setReport(null);
+      return;
+    }
+
+    async function fetchReport(id: number) {
       try {
+        setReportLoading(true);
         setError("");
-        const databases = await getDatabases();
-
-        if (!databases || databases.length === 0) {
-          setDatabaseId(null);
-          setReport(null);
-          return;
-        }
-
-        const selectedDatabase =
-          databases.find((db) => db.status === "Connected") ?? databases[0];
-
-        const selectedDatabaseId = selectedDatabase.id;
-        setDatabaseId(selectedDatabaseId);
-
-        const data = await getReport(selectedDatabaseId);
-
+        const data = await getReport(id);
         setReport(data);
       } catch (err) {
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError("Something went wrong");
-        }
+        setError(err instanceof Error ? err.message : "Something went wrong");
       } finally {
-        setLoading(false);
+        setReportLoading(false);
       }
     }
 
-    fetchReport();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-300">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-sky-400" />
-          <p className="text-sm text-slate-400">Loading report...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
-        <div className="flex max-w-md flex-col items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/5 p-8 text-center">
-          <XCircle className="h-8 w-8 text-red-400" />
-          <p className="font-medium text-red-400">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!databaseId || !report) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
-        <div className="flex max-w-md flex-col items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/40 p-10 text-center">
-          <DatabaseZap className="h-10 w-10 text-slate-500" />
-          <p className="text-lg font-semibold text-white">No database found</p>
-          <p className="text-sm text-slate-400">
-            Please add a database first.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const status = getHealthStatus(report);
+    fetchReport(selectedDatabaseId);
+  }, [selectedDatabaseId]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto max-w-7xl px-6 py-10 sm:px-8 lg:px-10">
-        {/* Header */}
-        <div className="mb-10 flex flex-col gap-6 border-b border-slate-800 pb-8 md:flex-row md:items-start md:justify-between">
-          <div>
-            <div className="mb-3 flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Database Report
-              </h1>
-              <HealthBadge status={status} />
+    <div className="flex bg-slate-950">
+      <Sidebar />
+
+      <main className="ml-72 flex-1 min-h-screen">
+        <Navbar />
+
+        {databaseLoading ? (
+          // Loading State: DatabaseContext still resolving
+          <CenteredSpinner label="Loading Your Workspace..." />
+        ) : !selectedDatabaseId ? (
+          // No Database State: user has no databases yet
+          <NoDatabaseEmptyState />
+        ) : reportLoading ? (
+          // Report Loading State: fetching report for the selected database
+          <CenteredSpinner label="Loading report..." />
+        ) : error ? (
+          <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+            <div className="flex max-w-md flex-col items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/5 p-8 text-center">
+              <XCircle className="h-8 w-8 text-red-400" />
+              <p className="font-medium text-red-400">{error}</p>
             </div>
-            <p className="max-w-xl text-sm text-slate-400 sm:text-base">
-              Real-time monitoring report generated from your PostgreSQL database.
-            </p>
-            <p className="mt-2 text-xs font-medium text-slate-500 sm:text-sm">
-              Generated: {new Date(report.generatedAt).toLocaleString()}
-            </p>
           </div>
-
-          <div className="flex shrink-0 md:justify-end">
-            <DownloadButton databaseId={databaseId} />
+        ) : !report ? (
+          <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+            <div className="flex max-w-md flex-col items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/40 p-10 text-center">
+              <DatabaseZap className="h-10 w-10 text-slate-500" />
+              <p className="text-lg font-semibold text-white">No report available</p>
+              <p className="text-sm text-slate-400">
+                Please try again later.
+              </p>
+            </div>
           </div>
-        </div>
+        ) : (
+          // Report State: report fetched successfully
+          <div className="min-h-screen bg-slate-950 text-white">
+            <div className="mx-auto max-w-7xl px-6 py-10 sm:px-8 lg:px-10">
+              {/* Header */}
+              <div className="mb-10 flex flex-col gap-6 border-b border-slate-800 pb-8 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="mb-3 flex flex-wrap items-center gap-3">
+                    <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                      Database Report
+                    </h1>
+                    <HealthBadge status={getHealthStatus(report)} />
+                  </div>
+                  <p className="max-w-xl text-sm text-slate-400 sm:text-base">
+                    Real-time monitoring report generated from your PostgreSQL database.
+                  </p>
+                  <p className="mt-2 text-xs font-medium text-slate-500 sm:text-sm">
+                    Generated: {new Date(report.generatedAt).toLocaleString()}
+                  </p>
+                </div>
 
-        {/* Content */}
-        <div className="space-y-10">
-          <ReportSummary report={report} />
-          <ReportTable report={report} />
-        </div>
-      </div>
+                <div className="flex shrink-0 md:justify-end">
+                  <DownloadButton databaseId={selectedDatabaseId} />
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="space-y-10">
+                <ReportSummary report={report} />
+                <ReportTable report={report} />
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
