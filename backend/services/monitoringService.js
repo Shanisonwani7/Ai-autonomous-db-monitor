@@ -680,9 +680,148 @@ async function getMonitoringSummary(id, userId) {
     if (client) await client.end().catch(() => {});
   }
 }
+async function collectHistoricalMetrics(database) {
+  let client;
 
+  try {
+    client = await connectClient(database);
+
+    const dbName = getActualDatabaseName(database);
+
+    const result = await client.query(`
+      SELECT
+        (SELECT COUNT(*)::int
+         FROM pg_stat_activity
+         WHERE datname = $1) AS active_connections,
+
+        (SELECT pg_size_pretty(pg_database_size($1))) AS database_size,
+
+        (SELECT xact_commit
+         FROM pg_stat_database
+         WHERE datname = $1) AS commits,
+
+        (SELECT xact_rollback
+         FROM pg_stat_database
+         WHERE datname = $1) AS rollbacks,
+
+        (SELECT deadlocks
+         FROM pg_stat_database
+         WHERE datname = $1) AS deadlocks,
+
+        (SELECT COUNT(*)::int
+         FROM pg_stat_activity
+         WHERE datname = $1
+         AND state = 'active'
+         AND pid != pg_backend_pid()) AS running_queries,
+
+        (SELECT COUNT(*)::int
+         FROM pg_stat_activity
+         WHERE datname = $1
+         AND state = 'active'
+         AND NOW() - query_start > INTERVAL '5 seconds'
+         AND pid != pg_backend_pid()) AS slow_queries,
+
+        (SELECT COUNT(*)::int
+         FROM pg_stat_activity
+         WHERE datname = $1
+         AND state = 'idle'
+         AND pid != pg_backend_pid()) AS idle_sessions,
+
+        (SELECT COUNT(*)::int
+         FROM pg_locks l
+         JOIN pg_stat_activity a ON l.pid = a.pid
+         WHERE a.datname = $1) AS locks
+    `, [dbName]);
+
+    const data = result.rows[0];
+
+    const activeConnections = Number(data.active_connections || 0);
+    const commits = Number(data.commits || 0);
+    const rollbacks = Number(data.rollbacks || 0);
+    const deadlocks = Number(data.deadlocks || 0);
+    const runningQueries = Number(data.running_queries || 0);
+    const slowQueries = Number(data.slow_queries || 0);
+    const idleSessions = Number(data.idle_sessions || 0);
+    const locks = Number(data.locks || 0);
+
+    const historicalMetric = await prisma.monitoringMetric.create({
+      data: {
+        databaseId: database.id,
+        activeConnections,
+        databaseSize: data.database_size,
+        commits,
+        rollbacks,
+        deadlocks,
+        runningQueries,
+        slowQueries,
+        locks,
+        idleSessions,
+      },
+    });
+
+    return {
+      success: true,
+      metric: historicalMetric,
+    };
+  } catch (err) {
+    console.error("Historical monitoring failed:", err.message);
+
+    return {
+      success: false,
+      errorMessage: err.message,
+    };
+  } finally {
+    if (client) {
+      await client.end().catch(() => {});
+    }
+  }
+}
+async function getMonitoringHistory(databaseId, userId) {
+  try {
+    const database = await getOwnedDatabase(databaseId, userId);
+
+    if (!database) {
+      return {
+        statusCode: 404,
+        body: {
+          success: false,
+          message: "Database not found",
+        },
+      };
+    }
+
+    const metrics = await prisma.monitoringMetric.findMany({
+      where: {
+        databaseId,
+      },
+      orderBy: {
+        timestamp: "desc",
+      },
+      take: 100,
+    });
+
+    return {
+      statusCode: 200,
+      body: {
+        success: true,
+        data: metrics,
+      },
+    };
+  } catch (error) {
+    console.error("Get monitoring history error:", error);
+
+    return {
+      statusCode: 500,
+      body: {
+        success: false,
+        message: "Failed to fetch monitoring history",
+      },
+    };
+  }
+}
 module.exports = {
   encryptPassword,
+  getMonitoringHistory,
   decryptPassword,
   connectClient,
   getOwnedDatabase,
@@ -697,4 +836,5 @@ module.exports = {
   getIdleSessions,
   getDatabaseStatistics,
   getMonitoringSummary,
+  collectHistoricalMetrics,
 };

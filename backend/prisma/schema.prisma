@@ -39,11 +39,38 @@ model Database {
   uptime            String?
   lastCheck         DateTime?
 
-  databaseVersion   String?
-  healthScore       Int?      @default(0)
+  databaseVersion String?
+  healthScore     Int?      @default(0)
 
   userId Int
   user   User @relation(fields: [userId], references: [id])
 
-  createdAt DateTime @default(now())
+  createdAt         DateTime           @default(now())
+  monitoringMetrics MonitoringMetric[]
+}
+
+model MonitoringMetric {
+  id Int @id @default(autoincrement())
+
+  databaseId Int
+  database   Database @relation(fields: [databaseId], references: [id], onDelete: Cascade)
+
+  timestamp DateTime @default(now())
+
+  activeConnections Int      @default(0)
+  databaseSize      String?
+  cacheHitRatio     Float?
+  commits           Int      @default(0)
+  rollbacks         Int      @default(0)
+  deadlocks         Int      @default(0)
+
+  runningQueries   Int @default(0)
+  slowQueries      Int @default(0)
+  locks            Int @default(0)
+  longTransactions Int @default(0)
+  idleSessions     Int @default(0)
+
+  healthScore Int?
+
+  @@index([databaseId, timestamp])
 }

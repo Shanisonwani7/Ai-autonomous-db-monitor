@@ -22,6 +22,7 @@ app.use((req, res, next) => {
 // =======================
 // Routes
 // =======================
+const { startMonitoringWorker, stopMonitoringWorker } = require("./workers/monitoringWorker");
 const authRoutes = require("./routes/authRoutes");
 const dashboardRoutes = require("./routes/dashboard");
 const databaseRoutes = require("./routes/databaseRoutes");
@@ -82,6 +83,22 @@ app.use((err, req, res, next) => {
 // =======================
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+
+  startMonitoringWorker();
+});
+
+process.on("SIGINT", () => {
+  stopMonitoringWorker();
+  server.close(() => {
+    process.exit(0);
+  });
+});
+
+process.on("SIGTERM", () => {
+  stopMonitoringWorker();
+  server.close(() => {
+    process.exit(0);
+  });
 });

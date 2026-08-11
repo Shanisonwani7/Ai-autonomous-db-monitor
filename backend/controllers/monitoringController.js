@@ -119,7 +119,20 @@ exports.getDatabaseStatistics = async (req, res) => {
   );
   return sendResult(res, result);
 };
+exports.getMonitoringHistory = async (req, res) => {
+  const id = parseId(req.params.id);
 
+  if (!id) {
+    return sendInvalidId(res);
+  }
+
+  const result = await monitoringService.getMonitoringHistory(
+    id,
+    req.user.id
+  );
+
+  return sendResult(res, result);
+};
 // Get Monitoring Summary
 exports.getMonitoringSummary = async (req, res) => {
   const id = parseId(req.params.id);

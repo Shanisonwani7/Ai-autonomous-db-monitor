@@ -13,8 +13,9 @@ const {
   getIdleSessions,
   getDatabaseStatistics,
   getMonitoringSummary,
+  getMonitoringHistory,
 } = require("../controllers/monitoringController");
-
+  
 // All routes require authentication
 router.use(authMiddleware);
 
@@ -44,5 +45,8 @@ router.get("/statistics/:id", getDatabaseStatistics);
 
 // Monitoring Summary
 router.get("/summary/:id", getMonitoringSummary);
+
+// Monitoring History
+router.get("/history/:id", getMonitoringHistory);
 
 module.exports = router;
