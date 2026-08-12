@@ -41,8 +41,9 @@ export default function ProfileCard() {
 
   // Logout
   const handleLogout = () => {
-    console.log("Logout");
-  };
+  localStorage.removeItem("token");
+  router.push("/login");
+};
   // Fetch User Profile
   useEffect(() => {
     async function loadProfile() {

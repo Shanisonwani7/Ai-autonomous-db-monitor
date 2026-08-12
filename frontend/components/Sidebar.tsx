@@ -10,13 +10,12 @@ const menuItems = [
   { name: "AI Assistant", path: "/ai", icon: "🤖" },
   { name: "Alerts", path: "/alerts", icon: "⚠️" },
 
-  // ✅ New Prediction Page
+  // Prediction Page
   { name: "AI Prediction", path: "/prediction", icon: "🔮" },
 
   { name: "Query Optimization", path: "/query", icon: "🔍" },
   { name: "Reports", path: "/reports", icon: "📄" },
   { name: "Settings", path: "/settings", icon: "⚙️" },
-  { name: "Profile", path: "/profile", icon: "👤" },
 ];
 
 export default function Sidebar() {

@@ -13,7 +13,7 @@ import QueryOptimizer from "../../components/Ai/QueryOptimizer";
 import AIRecommendation from "../../components/Ai/AIRecommendation";
 import RecentAlerts from "../../components/alerts/RecentAlerts";
 import DatabaseStatus from "../../components/database/DatabaseStatus";
-
+import { useMonitoringHistory } from "../../hooks/useMonitoringHistory";
 import {
   Cpu,
   MemoryStick,
@@ -162,6 +162,12 @@ function DashboardContent({
   selectedDatabaseId: number;
   token: string;
 }) {
+  const {
+  history,
+  loading: historyLoading,
+  error: historyError,
+} = useMonitoringHistory(selectedDatabaseId, token);
+console.log("HISTORY FROM HOOK:", history);
   const { data, loading, error } = useMonitoring(selectedDatabaseId, token);
 
   // Dashboard Statistics — recomputed only when the underlying
@@ -276,14 +282,14 @@ function DashboardContent({
       <div className="mt-12">
         <SectionHeader
           title="Performance Trends"
-          subtitle="Live CPU and memory performance monitoring"
+          subtitle="Historical database performance monitoring"
         />
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 hover:border-cyan-500/30 transition">
-            <CpuChart data={data} />
+            <CpuChart history={history} />
           </div>
           <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 hover:border-cyan-500/30 transition">
-            <MemoryChart data={data} />
+            <MemoryChart history={history} />
           </div>
         </div>
       </div>

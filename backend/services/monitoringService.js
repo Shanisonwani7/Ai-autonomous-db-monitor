@@ -299,51 +299,72 @@ async function getDatabaseVersion(id, userId) {
 }
 
 // Delegates to refreshConnectionStatus() — no duplicate query logic here.
+// NOTE: wrapped in try/catch (matching every other method in this file) so
+// that an unexpected error (e.g. from getOwnedDatabase, or any property
+// access below) returns a proper JSON 500 instead of an unhandled rejection
+// that Express turns into a bare HTML error page. That bare HTML page is
+// what the frontend can't parse, which is why it was falling back to the
+// generic "Failed to fetch dashboard data" message.
 async function getDashboardMetrics(id, userId) {
-  const database = await getOwnedDatabase(id, userId);
-  if (!database) return notFoundResult();
+  try {
+    const database = await getOwnedDatabase(id, userId);
+    if (!database) return notFoundResult();
 
-  const result = await refreshConnectionStatus(database);
+    const result = await refreshConnectionStatus(database);
 
-  if (!result.success) {
-    if (result.errorCode === "UNSUPPORTED_DB_TYPE") {
-      return { statusCode: 400, body: { success: false, message: result.errorMessage } };
-    }
-    return {
-      statusCode: 500,
-      body: {
-        success: false,
-        message: "Database Monitoring Failed",
-        error: result.errorMessage,
-      },
-    };
-  }
-
-  const { metrics } = result;
-
-  return okResult({
-    success: true,
-    database: {
-      id: database.id,
+    console.log("[Dashboard Debug]", {
+      databaseId: database.id,
+      userId,
       name: database.name,
-      type: database.dbType,
+      dbType: database.dbType,
       host: database.host,
       port: database.port,
-      status: metrics.status,
-      version: metrics.databaseVersion,
-      databaseSize: metrics.databaseSize,
-      activeConnections: metrics.activeConnections,
-      uptime: metrics.uptime,
-      healthScore: metrics.healthScore,
-      lastCheck: result.database.lastCheck,
-      // ----- Session 8: additional monitoring metrics -----
-      commits: metrics.commits,
-      rollbacks: metrics.rollbacks,
-      deadlocks: metrics.deadlocks,
-      cacheHitRatio: metrics.cacheHitRatio,
-      // ------------------------------------------------------
-    },
-  });
+      databaseName: database.databaseName,
+      status: database.status,
+    });
+
+    if (!result.success) {
+      if (result.errorCode === "UNSUPPORTED_DB_TYPE") {
+        return { statusCode: 400, body: { success: false, message: result.errorMessage } };
+      }
+      return {
+        statusCode: 500,
+        body: {
+          success: false,
+          message: "Database Monitoring Failed",
+          error: result.errorMessage,
+        },
+      };
+    }
+
+    const { metrics } = result;
+
+    return okResult({
+      success: true,
+      database: {
+        id: database.id,
+        name: database.name,
+        type: database.dbType,
+        host: database.host,
+        port: database.port,
+        status: metrics.status,
+        version: metrics.databaseVersion,
+        databaseSize: metrics.databaseSize,
+        activeConnections: metrics.activeConnections,
+        uptime: metrics.uptime,
+        healthScore: metrics.healthScore,
+        lastCheck: result.database.lastCheck,
+        // ----- Session 8: additional monitoring metrics -----
+        commits: metrics.commits,
+        rollbacks: metrics.rollbacks,
+        deadlocks: metrics.deadlocks,
+        cacheHitRatio: metrics.cacheHitRatio,
+        // ------------------------------------------------------
+      },
+    });
+  } catch (err) {
+    return errorResultWithMessage(err, "Failed to fetch dashboard metrics");
+  }
 }
 
 async function getRunningQueries(id, userId) {

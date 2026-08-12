@@ -10,30 +10,48 @@ import {
   CartesianGrid,
 } from "recharts";
 
-interface CpuChartProps {
-  data: {
-    healthScore: number;
-    activeConnections: number;
-    cacheHitRatio: number;
-  } | null;
+interface MonitoringHistory {
+  id: number;
+  databaseId: number;
+  timestamp: string;
+  activeConnections: number;
+  databaseSize: string | null;
+  cacheHitRatio: number | null;
+  commits: number;
+  rollbacks: number;
+  deadlocks: number;
+  runningQueries: number;
+  slowQueries: number;
+  locks: number;
+  longTransactions: number;
+  idleSessions: number;
+  healthScore: number | null;
 }
 
-export default function CpuChart({ data }: CpuChartProps) {
-  if (!data) {
+interface CpuChartProps {
+  history: MonitoringHistory[];
+}
+
+export default function CpuChart({ history }: CpuChartProps) {
+  if (!history || history.length === 0) {
     return (
       <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-lg hover:border-cyan-500/40 transition-all duration-300 h-[400px] flex items-center justify-center">
-        <p className="text-gray-400 animate-pulse font-medium">Loading CPU chart...</p>
+        <p className="text-gray-400 animate-pulse font-medium">
+          Loading historical monitoring data...
+        </p>
       </div>
     );
   }
 
-  const chartData = [
-    { time: "Now", cpu: data.healthScore },
-    { time: "+1m", cpu: Math.max(data.healthScore - 3, 0) },
-    { time: "+2m", cpu: Math.min(data.healthScore + 2, 100) },
-    { time: "+3m", cpu: data.healthScore },
-    { time: "+4m", cpu: Math.min(data.healthScore + 1, 100) },
-  ];
+  const chartData = [...history]
+    .reverse()
+    .map((item) => ({
+      time: new Date(item.timestamp).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      activeConnections: item.activeConnections,
+    }));
 
   return (
     <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-lg hover:border-cyan-500/40 transition-all duration-300">
@@ -41,18 +59,20 @@ export default function CpuChart({ data }: CpuChartProps) {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-bold text-white">
-            CPU Usage
+            Active Connections
           </h2>
+
           <p className="text-sm text-gray-400 mt-1">
-            Live processor utilization
+            Historical PostgreSQL connection activity
           </p>
         </div>
 
-        {/* Live Status */}
+        {/* Historical Status */}
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+
           <span className="text-xs text-green-400 font-medium">
-            LIVE
+            HISTORICAL
           </span>
         </div>
       </div>
@@ -64,13 +84,17 @@ export default function CpuChart({ data }: CpuChartProps) {
             strokeDasharray="4 4"
             stroke="#334155"
           />
+
           <XAxis
             dataKey="time"
             stroke="#94a3b8"
           />
+
           <YAxis
             stroke="#94a3b8"
+            allowDecimals={false}
           />
+
           <Tooltip
             contentStyle={{
               backgroundColor: "#0f172a",
@@ -79,13 +103,15 @@ export default function CpuChart({ data }: CpuChartProps) {
               color: "#fff",
             }}
           />
+
           <Line
             type="monotone"
-            dataKey="cpu"
+            dataKey="activeConnections"
+            name="Active Connections"
             stroke="#22c55e"
             strokeWidth={3}
             dot={{
-              r: 5,
+              r: 4,
               fill: "#22c55e",
             }}
             activeDot={{
