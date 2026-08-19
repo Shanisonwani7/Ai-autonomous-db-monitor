@@ -17,24 +17,111 @@ function generatePDF(report) {
       });
 
       // ==========================
+      // Calculate report status
+      // ==========================
+      const runningQueries = Number(
+        report.monitoring.runningQueries ?? 0
+      );
+
+      const slowQueries = Number(
+        report.monitoring.slowQueries ?? 0
+      );
+
+      const idleSessions = Number(
+        report.monitoring.idleSessions ?? 0
+      );
+
+      const longTransactions = Number(
+        report.monitoring.longTransactions ?? 0
+      );
+
+      const locks = Number(
+        report.monitoring.locks ?? 0
+      );
+
+      const deadlocks = Number(
+        report.statistics.deadlocks ?? 0
+      );
+
+      /*
+       * Locks alone do not mean the database is unhealthy.
+       *
+       * Critical:
+       * - deadlocks >= 5
+       * - locks >= 20
+       * - long transactions >= 5
+       * - running queries >= 50
+       *
+       * Warning:
+       * - slow queries >= 5
+       * - long transactions > 0
+       * - deadlocks > 0
+       * - locks >= 15 and running queries > 0
+       */
+      const isCritical =
+        deadlocks >= 5 ||
+        locks >= 20 ||
+        longTransactions >= 5 ||
+        runningQueries >= 50;
+
+      const isWarning =
+        !isCritical &&
+        (
+          slowQueries >= 5 ||
+          longTransactions > 0 ||
+          deadlocks > 0 ||
+          (locks >= 15 && runningQueries > 0)
+        );
+
+      let healthStatus = "Healthy";
+
+      if (isCritical) {
+        healthStatus = "Critical";
+      } else if (isWarning) {
+        healthStatus = "Needs Attention";
+      }
+
+      // ==========================
       // Title
       // ==========================
       doc
         .fontSize(22)
-        .text("AI Autonomous Database Monitoring Report", {
-          align: "center",
-        });
+        .text(
+          "AI Autonomous Database Monitoring Report",
+          {
+            align: "center",
+          }
+        );
 
       doc.moveDown();
 
       doc
         .fontSize(10)
-        .text(`Generated At: ${new Date().toLocaleString()}`);
+        .text(
+          `Generated At: ${new Date().toLocaleString()}`
+        );
 
       doc.moveDown();
 
       // ==========================
-      // Database
+      // Overall Status
+      // ==========================
+      doc
+        .fontSize(16)
+        .text("Overall Status", {
+          underline: true,
+        });
+
+      doc.moveDown(0.5);
+
+      doc
+        .fontSize(14)
+        .text(`Database Status: ${healthStatus}`);
+
+      doc.moveDown();
+
+      // ==========================
+      // Database Information
       // ==========================
       doc
         .fontSize(16)
@@ -45,10 +132,22 @@ function generatePDF(report) {
       doc.moveDown(0.5);
 
       doc.fontSize(12);
-      doc.text(`Database Name: ${report.database.name}`);
-      doc.text(`Version: ${report.database.version}`);
-      doc.text(`Database Size: ${report.database.size}`);
-      doc.text(`Active Connections: ${report.database.activeConnections}`);
+
+      doc.text(
+        `Database Name: ${report.database.name}`
+      );
+
+      doc.text(
+        `Version: ${report.database.version}`
+      );
+
+      doc.text(
+        `Database Size: ${report.database.size}`
+      );
+
+      doc.text(
+        `Active Connections: ${report.database.activeConnections}`
+      );
 
       doc.moveDown();
 
@@ -64,11 +163,26 @@ function generatePDF(report) {
       doc.moveDown(0.5);
 
       doc.fontSize(12);
-      doc.text(`Running Queries: ${report.monitoring.runningQueries}`);
-      doc.text(`Slow Queries: ${report.monitoring.slowQueries}`);
-      doc.text(`Idle Sessions: ${report.monitoring.idleSessions}`);
-      doc.text(`Long Transactions: ${report.monitoring.longTransactions}`);
-      doc.text(`Locks: ${report.monitoring.locks}`);
+
+      doc.text(
+        `Running Queries: ${runningQueries}`
+      );
+
+      doc.text(
+        `Slow Queries: ${slowQueries}`
+      );
+
+      doc.text(
+        `Idle Sessions: ${idleSessions}`
+      );
+
+      doc.text(
+        `Long Transactions: ${longTransactions}`
+      );
+
+      doc.text(
+        `Locks: ${locks}`
+      );
 
       doc.moveDown();
 
@@ -84,9 +198,18 @@ function generatePDF(report) {
       doc.moveDown(0.5);
 
       doc.fontSize(12);
-      doc.text(`Commits: ${report.statistics.commits}`);
-      doc.text(`Rollbacks: ${report.statistics.rollbacks}`);
-      doc.text(`Deadlocks: ${report.statistics.deadlocks}`);
+
+      doc.text(
+        `Commits: ${report.statistics.commits}`
+      );
+
+      doc.text(
+        `Rollbacks: ${report.statistics.rollbacks}`
+      );
+
+      doc.text(
+        `Deadlocks: ${deadlocks}`
+      );
 
       doc.moveDown();
 
@@ -103,23 +226,25 @@ function generatePDF(report) {
 
       doc.fontSize(12);
 
-      if (
-        report.monitoring.runningQueries === 0 &&
-        report.monitoring.slowQueries === 0 &&
-        report.monitoring.locks === 0 &&
-        report.statistics.deadlocks === 0
-      ) {
+      if (healthStatus === "Healthy") {
         doc.text(
-          "Database is healthy. Continue regular monitoring."
+          "Database is healthy based on the current monitoring metrics. Continue regular monitoring."
+        );
+      } else if (healthStatus === "Needs Attention") {
+        doc.text(
+          "Some monitoring indicators require attention. Review slow queries, transactions, locks, and deadlock activity."
         );
       } else {
         doc.text(
-          "Performance issues detected. Review monitoring metrics and optimize database."
+          "Critical database conditions were detected. Immediate investigation and maintenance are recommended."
         );
       }
 
       doc.moveDown(2);
 
+      // ==========================
+      // Footer
+      // ==========================
       doc
         .fontSize(10)
         .fillColor("gray")

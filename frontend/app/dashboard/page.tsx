@@ -311,7 +311,7 @@ console.log("HISTORY FROM HOOK:", history);
           title="AI Recommendations"
           subtitle="AI-generated optimization recommendations"
         />
-        <AIRecommendation data={data} />
+        <AIRecommendation />
       </div>
       {/* AI Query Optimizer */}
       <div className="mt-12">
@@ -355,7 +355,7 @@ console.log("HISTORY FROM HOOK:", history);
             © 2026 AI Autonomous Database Monitoring Platform
           </p>
           <p className="text-gray-500 text-sm">
-            Built with Next.js • Tailwind CSS • Spring Boot • PostgreSQL
+            Built with Next.js • Tailwind CSS • Node.js • Express • PostgreSQL • Python • FastAPI
           </p>
         </div>
       </footer>

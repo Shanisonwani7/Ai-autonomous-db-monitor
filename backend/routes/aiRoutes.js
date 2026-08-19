@@ -1,9 +1,23 @@
 const express = require("express");
+
 const router = express.Router();
 
-const { chat } = require("../controllers/aiController");
 const protect = require("../middleware/authMiddleware");
 
-router.post("/chat", protect, chat);
+const {
+  chat,
+  recommendation,
+} = require("../controllers/aiController");
+
+// Authentication for all AI routes
+router.use(protect);
+
+// AI Assistant
+// POST /api/ai/chat
+router.post("/chat", chat);
+
+// Dashboard AI Recommendation
+// GET /api/ai/recommendation/:id
+router.get("/recommendation/:id", recommendation);
 
 module.exports = router;

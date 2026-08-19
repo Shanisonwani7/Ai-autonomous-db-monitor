@@ -6,10 +6,6 @@ const AI_SERVICE_URL =
 const AI_SERVICE_SECRET =
   process.env.AI_SERVICE_SECRET;
 
-/**
- * Common headers for secure communication
- * between Node.js Backend and Python AI Service.
- */
 function getAIServiceHeaders() {
   if (!AI_SERVICE_SECRET) {
     throw new Error(
@@ -23,10 +19,10 @@ function getAIServiceHeaders() {
   };
 }
 
-/**
- * Send database monitoring question to Python AI Service.
- */
-async function chatWithAI(question, monitoringData) {
+async function chatWithAI(
+  question,
+  monitoringData
+) {
   try {
     const response = await axios.post(
       `${AI_SERVICE_URL}/ai/chat`,
@@ -45,21 +41,10 @@ async function chatWithAI(question, monitoringData) {
     console.error(
       "========== PYTHON AI SERVICE ERROR =========="
     );
-    console.error(
-      "Status:",
-      error.response?.status
-    );
-    console.error(
-      "Data:",
-      error.response?.data
-    );
-    console.error(
-      "Message:",
-      error.message
-    );
-    console.error(
-      "============================================"
-    );
+    console.error("Status:", error.response?.status);
+    console.error("Data:", error.response?.data);
+    console.error("Message:", error.message);
+    console.error("============================================");
 
     throw new Error(
       "AI Service request failed"
@@ -67,10 +52,44 @@ async function chatWithAI(question, monitoringData) {
   }
 }
 
-/**
- * Send historical monitoring data to Python
- * Prediction Service.
- */
+async function getAIRecommendation(
+  databaseId,
+  monitoringData
+) {
+  try {
+    const response = await axios.post(
+      `${AI_SERVICE_URL}/ai/recommendation`,
+      {
+        question: "Analyze the current database health and provide recommendations.",
+        monitoring_data: {
+          databaseId,
+          ...monitoringData,
+        },
+      },
+      {
+        timeout: 30000,
+        headers: getAIServiceHeaders(),
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "========== PYTHON AI RECOMMENDATION ERROR =========="
+    );
+    console.error("Status:", error.response?.status);
+    console.error("Data:", error.response?.data);
+    console.error("Message:", error.message);
+    console.error(
+      "===================================================="
+    );
+
+    throw new Error(
+      "AI Recommendation Service request failed"
+    );
+  }
+}
+
 async function predictDatabaseFailure(
   databaseName,
   history
@@ -93,18 +112,9 @@ async function predictDatabaseFailure(
     console.error(
       "========== PYTHON PREDICTION SERVICE ERROR =========="
     );
-    console.error(
-      "Status:",
-      error.response?.status
-    );
-    console.error(
-      "Data:",
-      error.response?.data
-    );
-    console.error(
-      "Message:",
-      error.message
-    );
+    console.error("Status:", error.response?.status);
+    console.error("Data:", error.response?.data);
+    console.error("Message:", error.message);
     console.error(
       "===================================================="
     );
@@ -117,5 +127,6 @@ async function predictDatabaseFailure(
 
 module.exports = {
   chatWithAI,
+  getAIRecommendation,
   predictDatabaseFailure,
 };
