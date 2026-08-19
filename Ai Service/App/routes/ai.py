@@ -1,7 +1,7 @@
 import os
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -11,6 +11,13 @@ router = APIRouter(
     prefix="/ai",
     tags=["AI"],
 )
+
+AI_SERVICE_SECRET = os.getenv("AI_SERVICE_SECRET")
+
+if not AI_SERVICE_SECRET:
+    raise RuntimeError(
+        "AI_SERVICE_SECRET is not configured"
+    )
 
 
 class ChatRequest(BaseModel):
@@ -30,6 +37,22 @@ def get_openrouter_key() -> str:
     return api_key
 
 
+def verify_ai_service_secret(
+    provided_secret: str | None,
+):
+    if not provided_secret:
+        raise HTTPException(
+            status_code=401,
+            detail="AI service authentication required",
+        )
+
+    if provided_secret != AI_SERVICE_SECRET:
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid AI service authentication",
+        )
+
+
 @router.get("/health")
 def ai_health():
     return {
@@ -40,7 +63,18 @@ def ai_health():
 
 
 @router.post("/chat")
-async def chat(request: ChatRequest):
+async def chat(
+    request: ChatRequest,
+    x_ai_service_secret: str | None = Header(
+        default=None,
+        alias="X-AI-Service-Secret",
+    ),
+):
+    # Verify that the request came from our backend.
+    verify_ai_service_secret(
+        x_ai_service_secret
+    )
+
     question = request.question.strip()
 
     if not question:
@@ -97,7 +131,9 @@ User Question:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(
+            timeout=30.0
+        ) as client:
             response = await client.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 json=payload,
@@ -131,7 +167,10 @@ User Question:
         except Exception:
             provider_error = exc.response.text
 
-        print("OpenRouter error:", provider_error)
+        print(
+            "OpenRouter error:",
+            provider_error,
+        )
 
         raise HTTPException(
             status_code=502,
@@ -139,7 +178,10 @@ User Question:
         )
 
     except httpx.RequestError as exc:
-        print("OpenRouter connection error:", str(exc))
+        print(
+            "OpenRouter connection error:",
+            str(exc),
+        )
 
         raise HTTPException(
             status_code=502,
@@ -150,7 +192,10 @@ User Question:
         raise
 
     except Exception as exc:
-        print("AI service error:", str(exc))
+        print(
+            "AI service error:",
+            str(exc),
+        )
 
         raise HTTPException(
             status_code=500,

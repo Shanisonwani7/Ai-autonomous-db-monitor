@@ -3,8 +3,28 @@ const axios = require("axios");
 const AI_SERVICE_URL =
   process.env.AI_SERVICE_URL || "http://localhost:8000";
 
+const AI_SERVICE_SECRET =
+  process.env.AI_SERVICE_SECRET;
+
 /**
- * Send database monitoring question to Python AI Service
+ * Common headers for secure communication
+ * between Node.js Backend and Python AI Service.
+ */
+function getAIServiceHeaders() {
+  if (!AI_SERVICE_SECRET) {
+    throw new Error(
+      "AI_SERVICE_SECRET is not configured"
+    );
+  }
+
+  return {
+    "Content-Type": "application/json",
+    "X-AI-Service-Secret": AI_SERVICE_SECRET,
+  };
+}
+
+/**
+ * Send database monitoring question to Python AI Service.
  */
 async function chatWithAI(question, monitoringData) {
   try {
@@ -16,9 +36,7 @@ async function chatWithAI(question, monitoringData) {
       },
       {
         timeout: 30000,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAIServiceHeaders(),
       }
     );
 
@@ -27,20 +45,31 @@ async function chatWithAI(question, monitoringData) {
     console.error(
       "========== PYTHON AI SERVICE ERROR =========="
     );
-    console.error("Status:", error.response?.status);
-    console.error("Data:", error.response?.data);
-    console.error("Message:", error.message);
+    console.error(
+      "Status:",
+      error.response?.status
+    );
+    console.error(
+      "Data:",
+      error.response?.data
+    );
+    console.error(
+      "Message:",
+      error.message
+    );
     console.error(
       "============================================"
     );
 
-    throw new Error("AI Service request failed");
+    throw new Error(
+      "AI Service request failed"
+    );
   }
 }
 
 /**
  * Send historical monitoring data to Python
- * Prediction Service
+ * Prediction Service.
  */
 async function predictDatabaseFailure(
   databaseName,
@@ -55,9 +84,7 @@ async function predictDatabaseFailure(
       },
       {
         timeout: 30000,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAIServiceHeaders(),
       }
     );
 
@@ -66,9 +93,18 @@ async function predictDatabaseFailure(
     console.error(
       "========== PYTHON PREDICTION SERVICE ERROR =========="
     );
-    console.error("Status:", error.response?.status);
-    console.error("Data:", error.response?.data);
-    console.error("Message:", error.message);
+    console.error(
+      "Status:",
+      error.response?.status
+    );
+    console.error(
+      "Data:",
+      error.response?.data
+    );
+    console.error(
+      "Message:",
+      error.message
+    );
     console.error(
       "===================================================="
     );
