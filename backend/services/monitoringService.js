@@ -709,83 +709,235 @@ async function collectHistoricalMetrics(database) {
 
     const dbName = getActualDatabaseName(database);
 
-    const result = await client.query(`
+    const result = await client.query(
+      `
       SELECT
-        (SELECT COUNT(*)::int
-         FROM pg_stat_activity
-         WHERE datname = $1) AS active_connections,
+        /* Active connections */
+        (
+          SELECT COUNT(*)::int
+          FROM pg_stat_activity
+          WHERE datname = $1
+        ) AS active_connections,
 
-        (SELECT pg_size_pretty(pg_database_size($1))) AS database_size,
+        /* Database size */
+        (
+          SELECT pg_size_pretty(
+            pg_database_size($1)
+          )
+        ) AS database_size,
 
-        (SELECT xact_commit
-         FROM pg_stat_database
-         WHERE datname = $1) AS commits,
+        /* Transaction statistics + cache statistics */
+        (
+          SELECT xact_commit
+          FROM pg_stat_database
+          WHERE datname = $1
+        ) AS commits,
 
-        (SELECT xact_rollback
-         FROM pg_stat_database
-         WHERE datname = $1) AS rollbacks,
+        (
+          SELECT xact_rollback
+          FROM pg_stat_database
+          WHERE datname = $1
+        ) AS rollbacks,
 
-        (SELECT deadlocks
-         FROM pg_stat_database
-         WHERE datname = $1) AS deadlocks,
+        (
+          SELECT deadlocks
+          FROM pg_stat_database
+          WHERE datname = $1
+        ) AS deadlocks,
 
-        (SELECT COUNT(*)::int
-         FROM pg_stat_activity
-         WHERE datname = $1
-         AND state = 'active'
-         AND pid != pg_backend_pid()) AS running_queries,
+        (
+          SELECT blks_read
+          FROM pg_stat_database
+          WHERE datname = $1
+        ) AS blocks_read,
 
-        (SELECT COUNT(*)::int
-         FROM pg_stat_activity
-         WHERE datname = $1
-         AND state = 'active'
-         AND NOW() - query_start > INTERVAL '5 seconds'
-         AND pid != pg_backend_pid()) AS slow_queries,
+        (
+          SELECT blks_hit
+          FROM pg_stat_database
+          WHERE datname = $1
+        ) AS blocks_hit,
 
-        (SELECT COUNT(*)::int
-         FROM pg_stat_activity
-         WHERE datname = $1
-         AND state = 'idle'
-         AND pid != pg_backend_pid()) AS idle_sessions,
+        /* Running queries */
+        (
+          SELECT COUNT(*)::int
+          FROM pg_stat_activity
+          WHERE datname = $1
+            AND state = 'active'
+            AND pid != pg_backend_pid()
+        ) AS running_queries,
 
-        (SELECT COUNT(*)::int
-         FROM pg_locks l
-         JOIN pg_stat_activity a ON l.pid = a.pid
-         WHERE a.datname = $1) AS locks
-    `, [dbName]);
+        /* Slow queries */
+        (
+          SELECT COUNT(*)::int
+          FROM pg_stat_activity
+          WHERE datname = $1
+            AND state = 'active'
+            AND NOW() - query_start > INTERVAL '5 seconds'
+            AND pid != pg_backend_pid()
+        ) AS slow_queries,
+
+        /* Idle sessions */
+        (
+          SELECT COUNT(*)::int
+          FROM pg_stat_activity
+          WHERE datname = $1
+            AND state = 'idle'
+            AND pid != pg_backend_pid()
+        ) AS idle_sessions,
+
+        /* Long-running transactions */
+        (
+          SELECT COUNT(*)::int
+          FROM pg_stat_activity
+          WHERE datname = $1
+            AND xact_start IS NOT NULL
+            AND NOW() - xact_start > INTERVAL '30 seconds'
+            AND pid != pg_backend_pid()
+        ) AS long_transactions,
+
+        /* Locks */
+        (
+          SELECT COUNT(*)::int
+          FROM pg_locks l
+          JOIN pg_stat_activity a
+            ON l.pid = a.pid
+          WHERE a.datname = $1
+        ) AS locks,
+
+        /* Database uptime */
+        (
+          SELECT now() - pg_postmaster_start_time()
+        ) AS uptime
+      `,
+      [dbName]
+    );
 
     const data = result.rows[0];
 
-    const activeConnections = Number(data.active_connections || 0);
-    const commits = Number(data.commits || 0);
-    const rollbacks = Number(data.rollbacks || 0);
-    const deadlocks = Number(data.deadlocks || 0);
-    const runningQueries = Number(data.running_queries || 0);
-    const slowQueries = Number(data.slow_queries || 0);
-    const idleSessions = Number(data.idle_sessions || 0);
-    const locks = Number(data.locks || 0);
+    const activeConnections = Number(
+      data.active_connections || 0
+    );
 
-    const historicalMetric = await prisma.monitoringMetric.create({
-      data: {
-        databaseId: database.id,
+    const commits = Number(
+      data.commits || 0
+    );
+
+    const rollbacks = Number(
+      data.rollbacks || 0
+    );
+
+    const deadlocks = Number(
+      data.deadlocks || 0
+    );
+
+    const blocksRead = Number(
+      data.blocks_read || 0
+    );
+
+    const blocksHit = Number(
+      data.blocks_hit || 0
+    );
+
+    const runningQueries = Number(
+      data.running_queries || 0
+    );
+
+    const slowQueries = Number(
+      data.slow_queries || 0
+    );
+
+    const idleSessions = Number(
+      data.idle_sessions || 0
+    );
+
+    const longTransactions = Number(
+      data.long_transactions || 0
+    );
+
+    const locks = Number(
+      data.locks || 0
+    );
+
+    /*
+     * Cache Hit Ratio
+     */
+    const totalBlockAccesses =
+      blocksHit + blocksRead;
+
+    const cacheHitRatio =
+      totalBlockAccesses > 0
+        ? Number(
+            (
+              (blocksHit /
+                totalBlockAccesses) *
+              100
+            ).toFixed(2)
+          )
+        : 0;
+
+    /*
+     * Format uptime so the same health-score
+     * calculation used elsewhere can be reused.
+     */
+    const uptime = formatUptime(
+      data.uptime
+    );
+
+    /*
+     * Use the existing project health-score
+     * calculation instead of creating another formula.
+     */
+    const healthScore =
+      calculateHealthScore(
         activeConnections,
-        databaseSize: data.database_size,
-        commits,
-        rollbacks,
-        deadlocks,
-        runningQueries,
-        slowQueries,
-        locks,
-        idleSessions,
-      },
-    });
+        data.database_size,
+        uptime
+      );
+
+    /*
+     * Save a complete historical monitoring snapshot.
+     */
+    const historicalMetric =
+      await prisma.monitoringMetric.create({
+        data: {
+          databaseId: database.id,
+
+          activeConnections,
+
+          databaseSize:
+            data.database_size,
+
+          cacheHitRatio,
+
+          commits,
+
+          rollbacks,
+
+          deadlocks,
+
+          runningQueries,
+
+          slowQueries,
+
+          locks,
+
+          longTransactions,
+
+          idleSessions,
+
+          healthScore,
+        },
+      });
 
     return {
       success: true,
       metric: historicalMetric,
     };
   } catch (err) {
-    console.error("Historical monitoring failed:", err.message);
+    console.error(
+      "Historical monitoring failed:",
+      err.message
+    );
 
     return {
       success: false,

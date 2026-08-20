@@ -19,6 +19,7 @@ function getAIServiceHeaders() {
   };
 }
 
+// AI Assistant
 async function chatWithAI(
   question,
   monitoringData
@@ -52,6 +53,7 @@ async function chatWithAI(
   }
 }
 
+// Dashboard AI Recommendation
 async function getAIRecommendation(
   databaseId,
   monitoringData
@@ -60,7 +62,8 @@ async function getAIRecommendation(
     const response = await axios.post(
       `${AI_SERVICE_URL}/ai/recommendation`,
       {
-        question: "Analyze the current database health and provide recommendations.",
+        question:
+          "Analyze the current database health and provide recommendations.",
         monitoring_data: {
           databaseId,
           ...monitoringData,
@@ -77,9 +80,18 @@ async function getAIRecommendation(
     console.error(
       "========== PYTHON AI RECOMMENDATION ERROR =========="
     );
-    console.error("Status:", error.response?.status);
-    console.error("Data:", error.response?.data);
-    console.error("Message:", error.message);
+    console.error(
+      "Status:",
+      error.response?.status
+    );
+    console.error(
+      "Data:",
+      error.response?.data
+    );
+    console.error(
+      "Message:",
+      error.message
+    );
     console.error(
       "===================================================="
     );
@@ -90,6 +102,7 @@ async function getAIRecommendation(
   }
 }
 
+// Database Failure Prediction
 async function predictDatabaseFailure(
   databaseName,
   history
@@ -112,9 +125,18 @@ async function predictDatabaseFailure(
     console.error(
       "========== PYTHON PREDICTION SERVICE ERROR =========="
     );
-    console.error("Status:", error.response?.status);
-    console.error("Data:", error.response?.data);
-    console.error("Message:", error.message);
+    console.error(
+      "Status:",
+      error.response?.status
+    );
+    console.error(
+      "Data:",
+      error.response?.data
+    );
+    console.error(
+      "Message:",
+      error.message
+    );
     console.error(
       "===================================================="
     );
@@ -125,8 +147,54 @@ async function predictDatabaseFailure(
   }
 }
 
+// Database Anomaly Detection
+async function detectDatabaseAnomaly(
+  databaseName,
+  history
+) {
+  try {
+    const response = await axios.post(
+      `${AI_SERVICE_URL}/anomaly/analyze`,
+      {
+        database: databaseName,
+        history,
+      },
+      {
+        timeout: 30000,
+        headers: getAIServiceHeaders(),
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "========== PYTHON ANOMALY SERVICE ERROR =========="
+    );
+    console.error(
+      "Status:",
+      error.response?.status
+    );
+    console.error(
+      "Data:",
+      error.response?.data
+    );
+    console.error(
+      "Message:",
+      error.message
+    );
+    console.error(
+      "=================================================="
+    );
+
+    throw new Error(
+      "Anomaly AI Service request failed"
+    );
+  }
+}
+
 module.exports = {
   chatWithAI,
   getAIRecommendation,
   predictDatabaseFailure,
+  detectDatabaseAnomaly,
 };

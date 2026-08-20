@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-
+from App.routes.anomaly import router as anomaly_router
 from App.routes.ai import router as ai_router
 from App.routes.prediction import router as prediction_router
 
@@ -10,7 +10,7 @@ app = FastAPI(
 
 app.include_router(ai_router)
 app.include_router(prediction_router)
-
+app.include_router(anomaly_router)
 
 @app.get("/health")
 def health_check():

@@ -1,7 +1,7 @@
 const prisma = require("../config/prisma");
 const monitoringService = require("../services/monitoringService");
 
-const INTERVAL_MS = 5 * 60 * 1000;
+const INTERVAL_MS = 60 * 1000;
 
 let workerInterval = null;
 let isRunning = false;
