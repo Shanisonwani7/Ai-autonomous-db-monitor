@@ -11,6 +11,7 @@ import MemoryChart from "../../components/charts/MemoryChart";
 import DatabaseHealthChart from "../../components/charts/DatabaseHealthChart";
 import QueryOptimizer from "../../components/Ai/QueryOptimizer";
 import AIRecommendation from "../../components/Ai/AIRecommendation";
+import AnomalyDetection from "../../components/Ai/AnomalyDetection";
 import RecentAlerts from "../../components/alerts/RecentAlerts";
 import DatabaseStatus from "../../components/database/DatabaseStatus";
 import { useMonitoringHistory } from "../../hooks/useMonitoringHistory";
@@ -313,6 +314,16 @@ console.log("HISTORY FROM HOOK:", history);
         />
         <AIRecommendation />
       </div>
+      {/* Anomaly Detection */}
+<div className="mt-12">
+  <SectionHeader
+    title="Anomaly Detection"
+    subtitle="AI-powered detection of unusual database activity"
+  />
+  <AnomalyDetection
+    databaseId={selectedDatabaseId}
+  />
+</div>
       {/* AI Query Optimizer */}
       <div className="mt-12">
         <SectionHeader

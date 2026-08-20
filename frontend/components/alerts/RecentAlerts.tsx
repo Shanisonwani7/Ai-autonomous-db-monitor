@@ -91,6 +91,8 @@ return (
               <th className="text-left pb-4">Database</th>
               <th className="text-left pb-4">Severity</th>
               <th className="text-left pb-4">Status</th>
+              <th className="text-left pb-4">Type</th>
+              <th className="text-left pb-4">Message</th>
             </tr>
           </thead>
 
@@ -109,7 +111,9 @@ return (
                     })
                   : "--"}
                 </td>
-
+                <td className="py-4 text-gray-300">
+                  {alert.type || "--"}
+                </td>
                 <td className="font-medium text-white">{alert.database}</td>
 
                 <td>
@@ -138,6 +142,9 @@ return (
                   >
                     {alert.status}
                   </span>
+                </td>
+                <td className="py-4 text-gray-300 max-w-md">
+                  {alert.message || "--"}
                 </td>
               </tr>
             ))}

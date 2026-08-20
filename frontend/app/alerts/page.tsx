@@ -76,7 +76,7 @@ export default function AlertsPage() {
           <div className="p-8 max-w-[1600px] mx-auto">
             {/* Header */}
             <div className="mb-10">
-              <h1 className="text-5xl font-extrabold bg-gradient-to-r from-red-400 via-orange-300 to-yellow-300 bg-clip-text text-transparent">
+              <h1 className="text-5xl font-extrabold text-white">
                 Alerts Center
               </h1>
 
