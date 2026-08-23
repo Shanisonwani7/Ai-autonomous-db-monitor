@@ -240,10 +240,59 @@ async function queryOptimizeWithAI(
   }
 }
 
+// ============================================================
+// === NEW: Phase 12.1 - AI Database Health Insights         ===
+// Calls the dedicated POST /ai/health-insights endpoint      ===
+// ============================================================
+async function getHealthInsights(
+  databaseName,
+  history
+) {
+  try {
+    const response = await axios.post(
+      `${AI_SERVICE_URL}/ai/health-insights`,
+      {
+        database: databaseName,
+        history,
+      },
+      {
+        timeout: 30000,
+        headers: getAIServiceHeaders(),
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "========== PYTHON AI HEALTH INSIGHTS ERROR =========="
+    );
+    console.error(
+      "Status:",
+      error.response?.status
+    );
+    console.error(
+      "Data:",
+      error.response?.data
+    );
+    console.error(
+      "Message:",
+      error.message
+    );
+    console.error(
+      "===================================================="
+    );
+
+    throw new Error(
+      "AI Health Insights Service request failed"
+    );
+  }
+}
+
 module.exports = {
   chatWithAI,
   getAIRecommendation,
   predictDatabaseFailure,
   detectDatabaseAnomaly,
   queryOptimizeWithAI,
+  getHealthInsights,
 };

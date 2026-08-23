@@ -12,6 +12,7 @@ import DatabaseHealthChart from "../../components/charts/DatabaseHealthChart";
 import QueryOptimizer from "../../components/Ai/QueryOptimizer";
 import AIRecommendation from "../../components/Ai/AIRecommendation";
 import AnomalyDetection from "../../components/Ai/AnomalyDetection";
+import HealthInsights from "../../components/Ai/HealthInsights";
 import RecentAlerts from "../../components/alerts/RecentAlerts";
 import DatabaseStatus from "../../components/database/DatabaseStatus";
 import { useMonitoringHistory } from "../../hooks/useMonitoringHistory";
@@ -331,6 +332,17 @@ console.log("HISTORY FROM HOOK:", history);
           subtitle="Analyze SQL queries and receive AI-powered optimization suggestions"
         />
         <QueryOptimizer />
+      </div>
+      {/* AI Health Insights */}
+      <div className="mt-12">
+        <SectionHeader
+          title="AI Health Insights"
+          subtitle="AI-powered analysis of historical database health and performance"
+        />
+
+        <HealthInsights
+          databaseId={selectedDatabaseId}
+        />
       </div>
       {/* Bottom Section */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-12">

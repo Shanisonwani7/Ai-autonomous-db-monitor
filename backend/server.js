@@ -34,6 +34,7 @@ const queryOptimizerRoutes = require("./routes/queryOptimizerRoutes");
 const predictionRoutes = require("./routes/predictionRoutes");
 const alertRoutes = require("./routes/alertRoutes");
 const anomalyRoutes = require("./routes/anomalyRoutes");
+const healthInsightsRoutes = require("./routes/healthInsightsRoutes");
 // =======================
 // API Routes
 // =======================
@@ -48,6 +49,7 @@ app.use("/api/query-optimizer", queryOptimizerRoutes);
 app.use("/api/prediction", predictionRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/api/anomaly", anomalyRoutes);
+app.use("/api/health-insights", healthInsightsRoutes);
 // =======================
 // Home Route
 // =======================
