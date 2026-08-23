@@ -1,4 +1,5 @@
 const express = require("express");
+
 const router = express.Router();
 
 const authMiddleware = require("../middleware/authMiddleware");
@@ -14,39 +15,75 @@ const {
   getDatabaseStatistics,
   getMonitoringSummary,
   getMonitoringHistory,
+  getTrendAnalysis,
 } = require("../controllers/monitoringController");
-  
+
 // All routes require authentication
+
 router.use(authMiddleware);
 
 // Dashboard Metrics
+
 router.get("/dashboard/:id", getDashboardMetrics);
 
 // Running Queries
+
 router.get("/running-queries/:id", getRunningQueries);
 
 // Slow Queries
+
 router.get("/slow-queries/:id", getSlowQueries);
 
 // Database Version
+
 router.get("/version/:id", getDatabaseVersion);
 
 // Long Running Transactions
-router.get("/long-transactions/:id",getLongRunningTransactions);
+
+router.get(
+  "/long-transactions/:id",
+  getLongRunningTransactions
+);
 
 // Idle Sessions
-router.get("/idle-sessions/:id",getIdleSessions);
+
+router.get(
+  "/idle-sessions/:id",
+  getIdleSessions
+);
 
 // Database Locks
+
 router.get("/locks/:id", getDatabaseLocks);
 
 // Database Statistics
-router.get("/statistics/:id", getDatabaseStatistics);
+
+router.get(
+  "/statistics/:id",
+  getDatabaseStatistics
+);
 
 // Monitoring Summary
-router.get("/summary/:id", getMonitoringSummary);
+
+router.get(
+  "/summary/:id",
+  getMonitoringSummary
+);
 
 // Monitoring History
-router.get("/history/:id", getMonitoringHistory);
+
+router.get(
+  "/history/:id",
+  getMonitoringHistory
+);
+
+// ============================================================
+// Phase 12.2 - Historical Trend Analysis
+// ============================================================
+
+router.get(
+  "/trends/:id",
+  getTrendAnalysis
+);
 
 module.exports = router;
