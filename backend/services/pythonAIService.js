@@ -192,9 +192,58 @@ async function detectDatabaseAnomaly(
   }
 }
 
+// ============================================================
+// === NEW: Phase 11 - AI Query Optimization Enhancement    ===
+// Calls the dedicated POST /ai/query-optimize endpoint       ===
+// ============================================================
+async function queryOptimizeWithAI(
+  question,
+  monitoringData
+) {
+  try {
+    const response = await axios.post(
+      `${AI_SERVICE_URL}/ai/query-optimize`,
+      {
+        question,
+        monitoring_data: monitoringData,
+      },
+      {
+        timeout: 30000,
+        headers: getAIServiceHeaders(),
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "========== PYTHON AI QUERY OPTIMIZE ERROR =========="
+    );
+    console.error(
+      "Status:",
+      error.response?.status
+    );
+    console.error(
+      "Data:",
+      error.response?.data
+    );
+    console.error(
+      "Message:",
+      error.message
+    );
+    console.error(
+      "===================================================="
+    );
+
+    throw new Error(
+      "AI Query Optimization Service request failed"
+    );
+  }
+}
+
 module.exports = {
   chatWithAI,
   getAIRecommendation,
   predictDatabaseFailure,
   detectDatabaseAnomaly,
+  queryOptimizeWithAI,
 };

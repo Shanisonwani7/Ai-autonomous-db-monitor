@@ -24,6 +24,12 @@ class ChatRequest(BaseModel):
     monitoring_data: dict
 
 
+# === NEW: Phase 11 - Query Optimization request model ===
+class QueryOptimizeRequest(BaseModel):
+    question: str
+    monitoring_data: dict
+
+
 def verify_ai_service_secret(
     provided_secret: str | None,
 ):
@@ -294,4 +300,155 @@ Real Database Monitoring Data:
             "suggestion": "AI recommendation could not be structured.",
             "estimatedGain": "N/A",
             "recommendations": [],
+        }
+
+
+# ============================================================
+# === NEW: Phase 11 - AI Query Optimization Enhancement    ===
+# === Endpoint: POST /ai/query-optimize                    ===
+# ============================================================
+@router.post("/query-optimize")
+async def query_optimize(
+    request: QueryOptimizeRequest,
+    x_ai_service_secret: str | None = Header(
+        default=None,
+        alias="X-AI-Service-Secret",
+    ),
+):
+    verify_ai_service_secret(x_ai_service_secret)
+
+    question = request.question.strip()
+
+    if not question:
+        raise HTTPException(
+            status_code=400,
+            detail="Question is required",
+        )
+
+    system_prompt = """
+You are a PostgreSQL Query Optimization Engineer.
+
+You will be given the original SQL query, its EXPLAIN (FORMAT JSON)
+execution plan, and detected issues (e.g. sequential scans, expensive
+nested loops, sort operations, high total cost) inside the supplied
+monitoring data.
+
+Analyze ONLY the supplied data. The query has NOT been executed
+(EXPLAIN was used without ANALYZE), so no real execution timings are
+available.
+
+Return ONLY valid JSON.
+Do not return markdown.
+Do not return code fences.
+
+Return EXACTLY:
+
+{
+  "optimizationScore": 0,
+  "estimatedImprovement": "0%",
+  "executionTime": "N/A",
+  "optimizedExecutionTime": "N/A",
+  "optimizedQuery": "",
+  "recommendations": [],
+  "analysis": ""
+}
+
+Rules:
+- optimizationScore must be an integer from 0 to 100.
+- estimatedImprovement must be a percentage string (e.g. "15%") or "N/A".
+- executionTime must always be "N/A" because EXPLAIN was run without ANALYZE.
+- optimizedExecutionTime must be "N/A" unless you provide a clearly
+  labeled safe estimate derived only from the supplied plan costs.
+- optimizedQuery must be syntactically valid PostgreSQL SQL.
+- optimizedQuery must preserve the exact meaning/result semantics of
+  the original query.
+- Never invent tables.
+- Never invent columns.
+- Never invent indexes.
+- Never invent values.
+- Never invent WHERE conditions.
+- Never invent JOIN conditions.
+- Never invent filters.
+- Never add placeholders.
+- recommendations must be an array of strings, each supported directly
+  by the supplied execution plan / detected issues.
+- If no safe optimization can be determined from the supplied data,
+  set optimizedQuery to the original query unchanged, optimizationScore
+  to reflect current plan health, estimatedImprovement to "N/A", and
+  explain why in analysis.
+- Keep analysis concise.
+- Do not suggest executing the query.
+"""
+
+    user_prompt = f"""
+Original Query, Execution Plan, and Detected Issues:
+
+{json.dumps(request.monitoring_data, indent=2)}
+
+Optimization Request:
+
+{question}
+"""
+
+    content = await call_openrouter(
+        system_prompt,
+        user_prompt,
+    )
+
+    try:
+        parsed = json.loads(content)
+
+        optimization_score = int(
+            parsed.get("optimizationScore", 0)
+        )
+        optimization_score = max(0, min(100, optimization_score))
+
+        estimated_improvement = str(
+            parsed.get("estimatedImprovement", "N/A")
+        )
+
+        execution_time = str(
+            parsed.get("executionTime", "N/A")
+        )
+
+        optimized_execution_time = str(
+            parsed.get("optimizedExecutionTime", "N/A")
+        )
+
+        optimized_query = str(
+            parsed.get("optimizedQuery", "")
+        )
+
+        recommendations = parsed.get("recommendations", [])
+
+        if not isinstance(recommendations, list):
+            recommendations = []
+
+        recommendations = [
+            str(item) for item in recommendations
+        ]
+
+        analysis = str(parsed.get("analysis", ""))
+
+        return {
+            "success": True,
+            "optimizationScore": optimization_score,
+            "estimatedImprovement": estimated_improvement,
+            "executionTime": execution_time,
+            "optimizedExecutionTime": optimized_execution_time,
+            "optimizedQuery": optimized_query,
+            "recommendations": recommendations,
+            "analysis": analysis,
+        }
+
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return {
+            "success": True,
+            "optimizationScore": 0,
+            "estimatedImprovement": "N/A",
+            "executionTime": "N/A",
+            "optimizedExecutionTime": "N/A",
+            "optimizedQuery": "",
+            "recommendations": [],
+            "analysis": "AI query optimization result could not be structured.",
         }

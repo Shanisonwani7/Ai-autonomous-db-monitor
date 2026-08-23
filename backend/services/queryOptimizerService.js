@@ -3,7 +3,9 @@ const {
   connectClient,
 } = require("./monitoringService");
 
-const { chatWithAI } = require("./pythonAIService");
+// === CHANGED: Phase 11 - use the dedicated query-optimize AI call
+// instead of the generic chatWithAI() ===
+const { queryOptimizeWithAI } = require("./pythonAIService");
 
 // ---------- Result helpers ----------
 
@@ -341,8 +343,18 @@ function extractJsonFromAiAnswer(answer) {
   return null;
 }
 
-function normalizeAiResult(aiAnswer, originalQuery) {
-  const parsed = extractJsonFromAiAnswer(aiAnswer);
+// === CHANGED: Phase 11 - queryOptimizeWithAI() already returns a
+// parsed/validated JSON object (not a raw `answer` string like
+// chatWithAI() does), so normalizeAiResult() now also accepts an
+// object directly. String input is still supported via
+// extractJsonFromAiAnswer() for backward compatibility. ===
+function normalizeAiResult(aiResponse, originalQuery) {
+  const parsed =
+    typeof aiResponse === "string"
+      ? extractJsonFromAiAnswer(aiResponse)
+      : aiResponse && typeof aiResponse === "object"
+      ? aiResponse
+      : null;
 
   if (!parsed || typeof parsed !== "object") {
     return {
@@ -353,8 +365,8 @@ function normalizeAiResult(aiAnswer, originalQuery) {
       optimizedQuery: originalQuery,
       recommendations: [],
       analysis:
-        typeof aiAnswer === "string"
-          ? aiAnswer
+        typeof aiResponse === "string"
+          ? aiResponse
           : "AI analysis was unavailable.",
     };
   }
@@ -460,13 +472,18 @@ Rules:
     detectedIssues,
   };
 
-  const response = await chatWithAI(
+  // === CHANGED: Phase 11 - call the dedicated query-optimize
+  // endpoint instead of the generic chatWithAI() ===
+  const response = await queryOptimizeWithAI(
     question,
     monitoringData
   );
 
+  // === CHANGED: Phase 11 - pass the full response object through;
+  // queryOptimizeWithAI()'s payload already IS the structured result
+  // (no `.answer` wrapper like chatWithAI() has) ===
   return normalizeAiResult(
-    response?.answer,
+    response,
     originalQuery
   );
 }
