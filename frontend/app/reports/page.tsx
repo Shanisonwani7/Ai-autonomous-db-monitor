@@ -19,7 +19,8 @@ import DownloadButton from "@/components/reports/DownloadButton";
 import ReportSummary from "@/components/reports/ReportSummary";
 import ReportTable from "@/components/reports/ReportTable";
 import { useDatabase } from "@/context/DatabaseContext";
-
+import HistoricalAnalysis from "@/components/reports/HistoricalAnalysis";
+import AIInsights from "@/components/reports/AIInsights";
 type HealthStatus = "healthy" | "warning" | "critical";
 
 /*
@@ -381,6 +382,14 @@ export default function ReportsPage() {
 
                 <ReportTable
                   report={report}
+                />
+
+                <HistoricalAnalysis
+                  analysis={report.report.historicalAnalysis}
+                />
+
+                <AIInsights
+                  insights={report.report.aiInsights}
                 />
 
               </div>

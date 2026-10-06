@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/layout/Navbar";
 import RecentAlerts from "@/components/alerts/RecentAlerts";
+import AlertHistory from "@/components/alerts/AlertHistory";
+import NotificationPermission from "@/components/alerts/NotificationPermission";
 
 import { Database, DatabaseZap } from "lucide-react";
 
@@ -16,7 +18,10 @@ function CenteredSpinner({ label }: { label: string }) {
     <div className="min-h-screen flex items-center justify-center">
       <div className="flex flex-col items-center">
         <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-cyan-400 font-medium text-lg">{label}</p>
+
+        <p className="mt-4 text-cyan-400 font-medium text-lg">
+          {label}
+        </p>
       </div>
     </div>
   );
@@ -38,8 +43,8 @@ function NoDatabaseEmptyState() {
         </h2>
 
         <p className="text-gray-400 mb-8 leading-relaxed">
-          Please add your first PostgreSQL database to start receiving AI
-          alerts.
+          Please add your first PostgreSQL database to start
+          receiving AI alerts.
         </p>
 
         <button
@@ -60,8 +65,10 @@ export default function AlertsPage() {
       ? localStorage.getItem("token") || ""
       : "";
 
-  // DatabaseContext loading, separate from RecentAlerts' own state
-  const { selectedDatabaseId, loading: databaseLoading } = useDatabase();
+  const {
+    selectedDatabaseId,
+    loading: databaseLoading,
+  } = useDatabase();
 
   return (
     <div className="flex bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -74,7 +81,6 @@ export default function AlertsPage() {
           <CenteredSpinner label="Loading Your Workspace..." />
         ) : (
           <div className="p-8 max-w-[1600px] mx-auto">
-            {/* Header */}
             <div className="mb-10">
               <h1 className="text-5xl font-extrabold text-white">
                 Alerts Center
@@ -86,10 +92,19 @@ export default function AlertsPage() {
             </div>
 
             {selectedDatabaseId ? (
-              <RecentAlerts
-                databaseId={selectedDatabaseId}
-                token={token}
-              />
+              <div className="space-y-10">
+                <NotificationPermission />
+
+                <RecentAlerts
+                  databaseId={selectedDatabaseId}
+                  token={token}
+                />
+
+                <AlertHistory
+                  databaseId={selectedDatabaseId}
+                  token={token}
+                />
+              </div>
             ) : (
               <NoDatabaseEmptyState />
             )}

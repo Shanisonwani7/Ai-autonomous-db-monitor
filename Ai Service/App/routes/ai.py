@@ -1,10 +1,11 @@
 import json
 import os
 
-import httpx
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 
 load_dotenv()
 
@@ -24,13 +25,11 @@ class ChatRequest(BaseModel):
     monitoring_data: dict
 
 
-# === NEW: Phase 11 - Query Optimization request model ===
 class QueryOptimizeRequest(BaseModel):
     question: str
     monitoring_data: dict
 
 
-# === NEW: Phase 12.1 - Health Insights request model ===
 class HealthInsightsRequest(BaseModel):
     database: str
     history: list
@@ -52,66 +51,52 @@ def verify_ai_service_secret(
         )
 
 
-def get_openrouter_key() -> str:
-    api_key = os.getenv("OPENROUTER_API_KEY")
+def get_gemini_key() -> str:
+    api_key = os.getenv("GEMINI_API_KEY")
 
     if not api_key:
         raise HTTPException(
             status_code=500,
-            detail="OPENROUTER_API_KEY is not configured",
+            detail="GEMINI_API_KEY is not configured",
         )
 
     return api_key
 
 
-async def call_openrouter(
+async def call_gemini(
     system_prompt: str,
     user_prompt: str,
 ):
-    api_key = get_openrouter_key()
-
-    payload = {
-        "model": "openai/gpt-4.1-mini",
-        "messages": [
-            {
-                "role": "system",
-                "content": system_prompt,
-            },
-            {
-                "role": "user",
-                "content": user_prompt,
-            },
-        ],
-        "temperature": 0.2,
-        "max_tokens": 500,
-    }
-
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost:8000",
-        "X-Title": "AI Autonomous Database Monitoring",
-    }
+    api_key = get_gemini_key()
 
     try:
-        async with httpx.AsyncClient(
-            timeout=30.0
-        ) as client:
-            response = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                json=payload,
-                headers=headers,
-            )
-
-        response.raise_for_status()
-
-        result = response.json()
-
-        content = (
-            result.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content")
+        client = genai.Client(
+            api_key=api_key,
         )
+
+        response = client.models.generate_content(
+            model="gemini-3.5-flash-lite",
+            contents=[
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part(
+                            text=(
+                                system_prompt
+                                + "\n\n"
+                                + user_prompt
+                            )
+                        )
+                    ],
+                )
+            ],
+            config=types.GenerateContentConfig(
+                temperature=0.2,
+                max_output_tokens=300,
+            ),
+        )
+
+        content = response.text
 
         if not content:
             raise HTTPException(
@@ -121,28 +106,15 @@ async def call_openrouter(
 
         return content
 
-    except httpx.HTTPStatusError as exc:
-        try:
-            provider_error = exc.response.json()
-        except Exception:
-            provider_error = exc.response.text
+    except HTTPException:
+        raise
 
-        print("OpenRouter error:", provider_error)
+    except Exception as exc:
+        print("Gemini error:", str(exc))
 
         raise HTTPException(
             status_code=502,
             detail="AI provider request failed",
-        )
-
-    except httpx.RequestError as exc:
-        print(
-            "OpenRouter connection error:",
-            str(exc),
-        )
-
-        raise HTTPException(
-            status_code=502,
-            detail="Unable to connect to AI provider",
         )
 
 
@@ -179,6 +151,7 @@ You are an expert PostgreSQL Database Administrator.
 Answer the user's question using ONLY the monitoring data provided.
 
 Rules:
+
 - Do not invent database metrics.
 - Do not invent tables, columns, queries, or indexes.
 - Be concise and practical.
@@ -195,7 +168,7 @@ User Question:
 {question}
 """
 
-    content = await call_openrouter(
+    content = await call_gemini(
         system_prompt,
         user_prompt,
     )
@@ -222,7 +195,9 @@ You are a PostgreSQL Database Performance Engineer.
 Analyze ONLY the supplied real monitoring data.
 
 Return ONLY valid JSON.
+
 Do not return markdown.
+
 Do not return code fences.
 
 Return EXACTLY:
@@ -235,6 +210,7 @@ Return EXACTLY:
 }
 
 Rules:
+
 - confidence must be an integer from 0 to 100.
 - suggestion must be short and actionable.
 - estimatedGain must be a percentage string such as "5%" or "N/A".
@@ -253,7 +229,7 @@ Real Database Monitoring Data:
 {json.dumps(request.monitoring_data, indent=2)}
 """
 
-    content = await call_openrouter(
+    content = await call_gemini(
         system_prompt,
         user_prompt,
     )
@@ -261,8 +237,20 @@ Real Database Monitoring Data:
     try:
         parsed = json.loads(content)
 
-        confidence = int(parsed.get("confidence", 0))
-        confidence = max(0, min(100, confidence))
+        confidence = int(
+            parsed.get(
+                "confidence",
+                0,
+            )
+        )
+
+        confidence = max(
+            0,
+            min(
+                100,
+                confidence,
+            ),
+        )
 
         suggestion = str(
             parsed.get(
@@ -283,7 +271,10 @@ Real Database Monitoring Data:
             [],
         )
 
-        if not isinstance(recommendations, list):
+        if not isinstance(
+            recommendations,
+            list,
+        ):
             recommendations = []
 
         recommendations = [
@@ -299,7 +290,11 @@ Real Database Monitoring Data:
             "recommendations": recommendations,
         }
 
-    except (json.JSONDecodeError, ValueError, TypeError):
+    except (
+        json.JSONDecodeError,
+        ValueError,
+        TypeError,
+    ):
         return {
             "success": True,
             "confidence": 0,
@@ -309,10 +304,6 @@ Real Database Monitoring Data:
         }
 
 
-# ============================================================
-# === NEW: Phase 11 - AI Query Optimization Enhancement    ===
-# === Endpoint: POST /ai/query-optimize                    ===
-# ============================================================
 @router.post("/query-optimize")
 async def query_optimize(
     request: QueryOptimizeRequest,
@@ -335,16 +326,17 @@ async def query_optimize(
 You are a PostgreSQL Query Optimization Engineer.
 
 You will be given the original SQL query, its EXPLAIN (FORMAT JSON)
-execution plan, and detected issues (e.g. sequential scans, expensive
-nested loops, sort operations, high total cost) inside the supplied
-monitoring data.
+execution plan, and detected issues inside the supplied monitoring data.
 
-Analyze ONLY the supplied data. The query has NOT been executed
-(EXPLAIN was used without ANALYZE), so no real execution timings are
-available.
+Analyze ONLY the supplied data.
+
+The query has NOT been executed with ANALYZE, so no real execution
+timings are available.
 
 Return ONLY valid JSON.
+
 Do not return markdown.
+
 Do not return code fences.
 
 Return EXACTLY:
@@ -360,14 +352,14 @@ Return EXACTLY:
 }
 
 Rules:
+
 - optimizationScore must be an integer from 0 to 100.
-- estimatedImprovement must be a percentage string (e.g. "15%") or "N/A".
-- executionTime must always be "N/A" because EXPLAIN was run without ANALYZE.
-- optimizedExecutionTime must be "N/A" unless you provide a clearly
-  labeled safe estimate derived only from the supplied plan costs.
-- optimizedQuery must be syntactically valid PostgreSQL SQL.
-- optimizedQuery must preserve the exact meaning/result semantics of
-  the original query.
+- estimatedImprovement must be a percentage string or "N/A".
+- executionTime must always be "N/A".
+- optimizedExecutionTime must be "N/A" unless a safe estimate is
+  directly supported by the supplied plan costs.
+- optimizedQuery must be valid PostgreSQL SQL.
+- optimizedQuery must preserve the exact result semantics.
 - Never invent tables.
 - Never invent columns.
 - Never invent indexes.
@@ -376,12 +368,9 @@ Rules:
 - Never invent JOIN conditions.
 - Never invent filters.
 - Never add placeholders.
-- recommendations must be an array of strings, each supported directly
-  by the supplied execution plan / detected issues.
-- If no safe optimization can be determined from the supplied data,
-  set optimizedQuery to the original query unchanged, optimizationScore
-  to reflect current plan health, estimatedImprovement to "N/A", and
-  explain why in analysis.
+- recommendations must be supported directly by the supplied data.
+- If no safe optimization can be determined, return the original query
+  unchanged and explain why.
 - Keep analysis concise.
 - Do not suggest executing the query.
 """
@@ -396,7 +385,7 @@ Optimization Request:
 {question}
 """
 
-    content = await call_openrouter(
+    content = await call_gemini(
         system_prompt,
         user_prompt,
     )
@@ -405,36 +394,70 @@ Optimization Request:
         parsed = json.loads(content)
 
         optimization_score = int(
-            parsed.get("optimizationScore", 0)
+            parsed.get(
+                "optimizationScore",
+                0,
+            )
         )
-        optimization_score = max(0, min(100, optimization_score))
+
+        optimization_score = max(
+            0,
+            min(
+                100,
+                optimization_score,
+            ),
+        )
 
         estimated_improvement = str(
-            parsed.get("estimatedImprovement", "N/A")
+            parsed.get(
+                "estimatedImprovement",
+                "N/A",
+            )
         )
 
         execution_time = str(
-            parsed.get("executionTime", "N/A")
+            parsed.get(
+                "executionTime",
+                "N/A",
+            )
         )
 
         optimized_execution_time = str(
-            parsed.get("optimizedExecutionTime", "N/A")
+            parsed.get(
+                "optimizedExecutionTime",
+                "N/A",
+            )
         )
 
         optimized_query = str(
-            parsed.get("optimizedQuery", "")
+            parsed.get(
+                "optimizedQuery",
+                "",
+            )
         )
 
-        recommendations = parsed.get("recommendations", [])
+        recommendations = parsed.get(
+            "recommendations",
+            [],
+        )
 
-        if not isinstance(recommendations, list):
+        if not isinstance(
+            recommendations,
+            list,
+        ):
             recommendations = []
 
         recommendations = [
-            str(item) for item in recommendations
+            str(item)
+            for item in recommendations
         ]
 
-        analysis = str(parsed.get("analysis", ""))
+        analysis = str(
+            parsed.get(
+                "analysis",
+                "",
+            )
+        )
 
         return {
             "success": True,
@@ -447,7 +470,11 @@ Optimization Request:
             "analysis": analysis,
         }
 
-    except (json.JSONDecodeError, ValueError, TypeError):
+    except (
+        json.JSONDecodeError,
+        ValueError,
+        TypeError,
+    ):
         return {
             "success": True,
             "optimizationScore": 0,
@@ -460,10 +487,6 @@ Optimization Request:
         }
 
 
-# ============================================================
-# === NEW: Phase 12.1 - AI Database Health Insights         ===
-# === Endpoint: POST /ai/health-insights                    ===
-# ============================================================
 @router.post("/health-insights")
 async def health_insights(
     request: HealthInsightsRequest,
@@ -486,15 +509,14 @@ async def health_insights(
 You are an expert PostgreSQL Database Reliability Engineer.
 
 You will be given a database name and a chronological history of real
-monitoring records. Each record may include fields such as: timestamp,
-activeConnections, runningQueries, slowQueries, deadlocks, locks,
-longTransactions, idleSessions, cacheHitRatio, healthScore, and
-databaseSize.
+monitoring records.
 
 Analyze ONLY the supplied historical monitoring data.
 
 Return ONLY valid JSON.
+
 Do not return markdown.
+
 Do not return code fences.
 
 Return EXACTLY:
@@ -514,39 +536,64 @@ Return EXACTLY:
 }
 
 Rules:
-- overallTrend must be a short label such as "Stable", "Improving",
-  "Degrading", or "Insufficient Data".
-- healthSummary must be concise and practical, describing what the
-  history actually shows.
-- Each field in metricTrends must be a short phrase describing that
-  metric's trend across the supplied history (e.g. "Stable around
-  95%", "Rising over the period", "Insufficient data").
-- concerns must be an array of strings, each describing an issue that
-  is directly supported by the supplied history. If there are no
-  concerns, return an empty array.
-- recommendedActions must be an array of strings with practical next
-  steps. If the database is healthy, say so and recommend continued
-  monitoring.
-- Never invent metrics, incidents, timestamps, or values that are not
-  present in the supplied history.
-- If the supplied history is empty or too sparse to draw a conclusion,
-  set overallTrend to "Insufficient Data", explain this in
-  healthSummary, and leave concerns/recommendedActions reflecting
-  that limitation rather than inventing findings.
-- If health is stable, explicitly say so rather than implying issues.
+
+- overallTrend must be "Stable", "Improving", "Degrading", or
+  "Insufficient Data".
+- healthSummary must describe only what the data shows.
+- metricTrends must contain short trend descriptions.
+- concerns must only contain issues directly supported by the data.
+- recommendedActions must only be based on the supplied data.
+- Never invent metrics, incidents, timestamps, or values.
+- If there is insufficient data, use "Insufficient Data".
+- If health is stable, explicitly say so.
 """
+
+    history = request.history[-3:]
+
+    compact_history = []
+
+    for record in history:
+        compact_history.append(
+            {
+                "timestamp": record.get("timestamp"),
+                "activeConnections": record.get(
+                    "activeConnections"
+                ),
+                "runningQueries": record.get(
+                    "runningQueries"
+                ),
+                "slowQueries": record.get(
+                    "slowQueries"
+                ),
+                "deadlocks": record.get(
+                    "deadlocks"
+                ),
+                "locks": record.get(
+                    "locks"
+                ),
+                "longTransactions": record.get(
+                    "longTransactions"
+                ),
+                "cacheHitRatio": record.get(
+                    "cacheHitRatio"
+                ),
+                "healthScore": record.get(
+                    "healthScore"
+                ),
+            }
+        )
 
     user_prompt = f"""
 Database:
 
 {database}
 
-Historical Monitoring Records:
+Recent Historical Monitoring Records:
 
-{json.dumps(request.history, indent=2)}
+{json.dumps(compact_history, indent=2)}
 """
 
-    content = await call_openrouter(
+    content = await call_gemini(
         system_prompt,
         user_prompt,
     )
@@ -555,52 +602,93 @@ Historical Monitoring Records:
         parsed = json.loads(content)
 
         overall_trend = str(
-            parsed.get("overallTrend", "Insufficient Data")
+            parsed.get(
+                "overallTrend",
+                "Insufficient Data",
+            )
         )
 
         health_summary = str(
-            parsed.get("healthSummary", "")
+            parsed.get(
+                "healthSummary",
+                "",
+            )
         )
 
-        raw_metric_trends = parsed.get("metricTrends", {})
+        raw_metric_trends = parsed.get(
+            "metricTrends",
+            {},
+        )
 
-        if not isinstance(raw_metric_trends, dict):
+        if not isinstance(
+            raw_metric_trends,
+            dict,
+        ):
             raw_metric_trends = {}
 
         metric_trends = {
             "healthScore": str(
-                raw_metric_trends.get("healthScore", "N/A")
+                raw_metric_trends.get(
+                    "healthScore",
+                    "N/A",
+                )
             ),
             "connections": str(
-                raw_metric_trends.get("connections", "N/A")
+                raw_metric_trends.get(
+                    "connections",
+                    "N/A",
+                )
             ),
             "slowQueries": str(
-                raw_metric_trends.get("slowQueries", "N/A")
+                raw_metric_trends.get(
+                    "slowQueries",
+                    "N/A",
+                )
             ),
             "locks": str(
-                raw_metric_trends.get("locks", "N/A")
+                raw_metric_trends.get(
+                    "locks",
+                    "N/A",
+                )
             ),
             "cacheHitRatio": str(
-                raw_metric_trends.get("cacheHitRatio", "N/A")
+                raw_metric_trends.get(
+                    "cacheHitRatio",
+                    "N/A",
+                )
             ),
         }
 
-        concerns = parsed.get("concerns", [])
-
-        if not isinstance(concerns, list):
-            concerns = []
-
-        concerns = [str(item) for item in concerns]
-
-        recommended_actions = parsed.get(
-            "recommendedActions", []
+        concerns = parsed.get(
+            "concerns",
+            [],
         )
 
-        if not isinstance(recommended_actions, list):
+        if not isinstance(
+            concerns,
+            list,
+        ):
+            concerns = []
+
+        concerns = [
+            str(item)
+            for item in concerns
+        ]
+
+        recommended_actions = parsed.get(
+            "recommendedActions",
+            [],
+        )
+
+        if not isinstance(
+            recommended_actions,
+            list,
+        ):
             recommended_actions = []
 
         recommended_actions = [
-            str(item) for item in recommended_actions
+            str(item)
+            for item in recommended_actions
         ]
 
         return {
@@ -612,7 +700,11 @@ Historical Monitoring Records:
             "recommendedActions": recommended_actions,
         }
 
-    except (json.JSONDecodeError, ValueError, TypeError):
+    except (
+        json.JSONDecodeError,
+        ValueError,
+        TypeError,
+    ):
         return {
             "success": True,
             "overallTrend": "Insufficient Data",

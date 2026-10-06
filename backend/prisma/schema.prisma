@@ -8,30 +8,30 @@ datasource db {
 }
 
 model User {
-  id        Int        @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   name      String
-  email     String     @unique
+  email     String   @unique
   password  String
-  role      String     @default("user")
-  createdAt DateTime   @default(now())
+  role      String   @default("user")
+  createdAt DateTime @default(now())
 
   databases Database[]
 }
 
 model Database {
-  id            Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  // Display Name (UI me dikhane ke liye)
-  name          String
+  // Display Name
+  name String
 
   // Actual PostgreSQL Database Name
   databaseName String?
 
-  dbType        String
-  host          String
-  port          Int
-  username      String
-  password      String
+  dbType   String
+  host     String
+  port     Int
+  username String
+  password String
 
   status            String?   @default("Disconnected")
   databaseSize      String?
@@ -40,13 +40,14 @@ model Database {
   lastCheck         DateTime?
 
   databaseVersion String?
-  healthScore     Int?      @default(0)
+  healthScore     Int?    @default(0)
 
   userId Int
   user   User @relation(fields: [userId], references: [id])
 
   createdAt         DateTime           @default(now())
   monitoringMetrics MonitoringMetric[]
+  alerts            Alert[]
 }
 
 model MonitoringMetric {
@@ -57,12 +58,12 @@ model MonitoringMetric {
 
   timestamp DateTime @default(now())
 
-  activeConnections Int      @default(0)
+  activeConnections Int     @default(0)
   databaseSize      String?
   cacheHitRatio     Float?
-  commits           Int      @default(0)
-  rollbacks         Int      @default(0)
-  deadlocks         Int      @default(0)
+  commits           Int     @default(0)
+  rollbacks         Int     @default(0)
+  deadlocks         Int     @default(0)
 
   runningQueries   Int @default(0)
   slowQueries      Int @default(0)
@@ -73,4 +74,33 @@ model MonitoringMetric {
   healthScore Int?
 
   @@index([databaseId, timestamp])
+}
+
+model Alert {
+  id Int @id @default(autoincrement())
+
+  databaseId Int
+  database   Database @relation(fields: [databaseId], references: [id], onDelete: Cascade)
+
+  type     String
+  severity String
+  status   String
+  message  String
+
+  // Metric information
+  metric      String?
+  threshold   Float?
+  actualValue Float?
+
+  // AI anomaly information
+  anomalyScore Float?
+  riskLevel    String?
+  probability  String?
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([databaseId, createdAt])
+  @@index([databaseId, status])
+  @@index([databaseId, type])
 }

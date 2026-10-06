@@ -1,5 +1,8 @@
 const prisma = require("../config/prisma");
 const monitoringService = require("../services/monitoringService");
+const {
+  generateAlertsService,
+} = require("../services/alertService");
 
 const INTERVAL_MS = 60 * 1000;
 
@@ -15,23 +18,59 @@ async function collectAllDatabases() {
 
   try {
     const databases = await prisma.database.findMany({
-  where: {
-    status: "Connected",
-  },
-});
-console.log("[MonitoringWorker] Databases found:", databases.length);
+      where: {
+        status: "Connected",
+      },
+    });
+
+    console.log(
+      "[MonitoringWorker] Databases found:",
+      databases.length
+    );
+
     for (const database of databases) {
       try {
         const result =
-          await monitoringService.collectHistoricalMetrics(database);
-          console.log(
-  "[MonitoringWorker] Collection result:",
-  result
-);
+          await monitoringService.collectHistoricalMetrics(
+            database
+          );
+
+        console.log(
+          "[MonitoringWorker] Collection result:",
+          result
+        );
+
         if (!result.success) {
           console.error(
             `[MonitoringWorker] Database ${database.id} failed:`,
             result.errorMessage
+          );
+
+          continue;
+        }
+
+        try {
+          const alertResult =
+            await generateAlertsService(
+              database.id,
+              database.userId
+            );
+
+          if (alertResult.statusCode >= 400) {
+            console.error(
+              `[MonitoringWorker] Alert generation failed for database ${database.id}:`,
+              alertResult.body?.message
+            );
+          } else {
+            console.log(
+              `[MonitoringWorker] Alerts generated for database ${database.id}:`,
+              alertResult.body?.totalAlerts ?? 0
+            );
+          }
+        } catch (alertError) {
+          console.error(
+            `[MonitoringWorker] Alert engine error for database ${database.id}:`,
+            alertError.message
           );
         }
       } catch (error) {
